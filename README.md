@@ -71,25 +71,25 @@ iface eth1 inet static
 # Switch2 - PHP Workers
 auto eth2
 iface eth2 inet static
-    address 192.212.5.1
+    address 192.212.2.1
     netmask 255.255.255.0
 
 # Switch5 - Clients (Khamul, Erendis, Amdir via Switch8→Switch6)
 auto eth3
 iface eth3 inet static
-    address 192.212.2.1
+    address 192.212.3.1
     netmask 255.255.255.0
 
 # Switch4 - Services (Aldarion, Palantir, Narvi)
 auto eth4
 iface eth4 inet static
-    address 192.212.3.1
+    address 192.212.4.1
     netmask 255.255.255.0
 
 # Minastir (Direct Connection)
 auto eth5
 iface eth5 inet static
-    address 192.212.6.1
+    address 192.212.5.1
     netmask 255.255.255.0
 ```
 
@@ -117,7 +117,7 @@ for i in eth1 eth2 eth3 eth4 eth5; do
 done
 ```
 
-### Elendil
+#### Elendil
 ```
 auto lo
 iface lo inet loopback
@@ -130,7 +130,7 @@ iface eth0 inet static
     up echo "nameserver 192.168.122.1" > /etc/resolv.conf
 ```
 
-### Isildur
+#### Isildur
 ```
 auto lo
 iface lo inet loopback
@@ -143,7 +143,7 @@ iface eth0 inet static
     up echo "nameserver 192.168.122.1" > /etc/resolv.conf
 ```
 
-### Anarion
+#### Anarion
 ```
 auto lo
 iface lo inet loopback
@@ -156,124 +156,7 @@ iface eth0 inet static
     up echo "nameserver 192.168.122.1" > /etc/resolv.conf
 ```
 
-### Gigalad
-```
-auto lo
-iface lo inet loopback
-
-auto eth0
-iface eth0 inet static
-    address 192.212.5.2
-    netmask 255.255.255.0
-    gateway 192.212.5.1
-    up echo "nameserver 192.168.122.1" > /etc/resolv.conf
-```
-
-### Celebrimbor
-```
-auto lo
-iface lo inet loopback
-
-auto eth0
-iface eth0 inet static
-    address 192.212.5.3
-    netmask 255.255.255.0
-    gateway 192.212.5.1
-    up echo "nameserver 192.168.122.1" > /etc/resolv.conf
-```
-
-### Pharazon
-```
-auto lo
-iface lo inet loopback
-
-auto eth0
-iface eth0 inet static
-    address 192.212.5.4
-    netmask 255.255.255.0
-    gateway 192.212.5.1
-    up echo "nameserver 192.168.122.1" > /etc/resolv.conf
-```
-
-### Aldarion
-```
-auto lo
-iface lo inet loopback
-
-auto eth0
-iface eth0 inet static
-    address 192.212.3.2
-    netmask 255.255.255.0
-    gateway 192.212.3.1
-    up echo "nameserver 192.168.122.1" > /etc/resolv.conf
-```
-
-### Palantir
-```
-auto lo
-iface lo inet loopback
-
-auto eth0
-iface eth0 inet static
-    address 192.212.3.3
-    netmask 255.255.255.0
-    gateway 192.212.3.1
-    up echo "nameserver 192.168.122.1" > /etc/resolv.conf
-```
-
-### Narvi
-```
-auto lo
-iface lo inet loopback
-
-auto eth0
-iface eth0 inet static
-    address 192.212.3.4
-    netmask 255.255.255.0
-    gateway 192.212.3.1
-    up echo "nameserver 192.168.122.1" > /etc/resolv.conf
-```
-
-### Miriel
-```
-auto lo
-iface lo inet loopback
-
-auto eth0
-iface eth0 inet static
-    address 192.212.1.5
-    netmask 255.255.255.0
-    gateway 192.212.1.1
-    up echo "nameserver 192.168.122.1" > /etc/resolv.conf
-```
-
-### Amandil
-```
-auto lo
-iface lo inet loopback
-
-auto eth0
-iface eth0 inet static
-    address 192.212.1.7
-    netmask 255.255.255.0
-    gateway 192.212.1.1
-    up echo "nameserver 192.168.122.1" > /etc/resolv.conf
-```
-
-### Elros
-```
-auto lo
-iface lo inet loopback
-
-auto eth0
-iface eth0 inet static
-    address 192.212.1.6
-    netmask 255.255.255.0
-    gateway 192.212.1.1
-    up echo "nameserver 192.168.122.1" > /etc/resolv.conf
-```
-
-### Khamul
+#### Gigalad
 ```
 auto lo
 iface lo inet loopback
@@ -286,7 +169,7 @@ iface eth0 inet static
     up echo "nameserver 192.168.122.1" > /etc/resolv.conf
 ```
 
-### Erendis
+#### Celebrimbor
 ```
 auto lo
 iface lo inet loopback
@@ -299,7 +182,7 @@ iface eth0 inet static
     up echo "nameserver 192.168.122.1" > /etc/resolv.conf
 ```
 
-### Amdir
+#### Pharazon
 ```
 auto lo
 iface lo inet loopback
@@ -312,58 +195,350 @@ iface eth0 inet static
     up echo "nameserver 192.168.122.1" > /etc/resolv.conf
 ```
 
-### Galadriel
+#### Aldarion
 ```
 auto lo
 iface lo inet loopback
 
 auto eth0
 iface eth0 inet static
-    address 192.212.5.5
+    address 192.212.4.2
+    netmask 255.255.255.0
+    gateway 192.212.4.1
+    up echo "nameserver 192.168.122.1" > /etc/resolv.conf
+```
+
+#### Palantir
+```
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet static
+    address 192.212.4.3
+    netmask 255.255.255.0
+    gateway 192.212.4.1
+    up echo "nameserver 192.168.122.1" > /etc/resolv.conf
+```
+
+#### Narvi
+```
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet static
+    address 192.212.4.4
+    netmask 255.255.255.0
+    gateway 192.212.4.1
+    up echo "nameserver 192.168.122.1" > /etc/resolv.conf
+```
+
+#### Miriel
+```
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet static
+    address 192.212.1.5
+    netmask 255.255.255.0
+    gateway 192.212.1.1
+    up echo "nameserver 192.168.122.1" > /etc/resolv.conf
+```
+
+#### Amandil
+```
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet static
+    address 192.212.1.7
+    netmask 255.255.255.0
+    gateway 192.212.1.1
+    up echo "nameserver 192.168.122.1" > /etc/resolv.conf
+```
+
+#### Elros
+```
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet static
+    address 192.212.1.6
+    netmask 255.255.255.0
+    gateway 192.212.1.1
+    up echo "nameserver 192.168.122.1" > /etc/resolv.conf
+```
+
+#### Khamul
+```
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet static
+    address 192.212.3.2
+    netmask 255.255.255.0
+    gateway 192.212.3.1
+    up echo "nameserver 192.168.122.1" > /etc/resolv.conf
+```
+
+#### Erendis
+```
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet static
+    address 192.212.3.3
+    netmask 255.255.255.0
+    gateway 192.212.3.1
+    up echo "nameserver 192.168.122.1" > /etc/resolv.conf
+```
+
+#### Amdir
+```
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet static
+    address 192.212.3.4
+    netmask 255.255.255.0
+    gateway 192.212.3.1
+    up echo "nameserver 192.168.122.1" > /etc/resolv.conf
+```
+
+#### Galadriel
+```
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet static
+    address 192.212.2.5
+    netmask 255.255.255.0
+    gateway 192.212.2.1
+    up echo "nameserver 192.168.122.1" > /etc/resolv.conf
+```
+
+#### Celeborn
+```
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet static
+    address 192.212.2.6
+    netmask 255.255.255.0
+    gateway 192.212.2.1
+    up echo "nameserver 192.168.122.1" > /etc/resolv.conf
+```
+
+#### Oropher
+```
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet static
+    address 192.212.2.7
+    netmask 255.255.255.0
+    gateway 192.212.2.1
+    up echo "nameserver 192.168.122.1" > /etc/resolv.conf
+```
+
+#### Minastir
+```
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet static
+    address 192.212.5.2
     netmask 255.255.255.0
     gateway 192.212.5.1
     up echo "nameserver 192.168.122.1" > /etc/resolv.conf
 ```
 
-### Celeborn
-```
-auto lo
-iface lo inet loopback
-
-auto eth0
-iface eth0 inet static
-    address 192.212.5.6
-    netmask 255.255.255.0
-    gateway 192.212.5.1
-    up echo "nameserver 192.168.122.1" > /etc/resolv.conf
-```
-
-### Oropher
-```
-auto lo
-iface lo inet loopback
-
-auto eth0
-iface eth0 inet static
-    address 192.212.5.7
-    netmask 255.255.255.0
-    gateway 192.212.5.1
-    up echo "nameserver 192.168.122.1" > /etc/resolv.conf
-```
-
-### Minastir
-```
-auto lo
-iface lo inet loopback
-
-auto eth0
-iface eth0 inet static
-    address 192.212.6.2
-    netmask 255.255.255.0
-    gateway 192.212.6.1
-    up echo "nameserver 192.168.122.1" > /etc/resolv.conf
-```
-
-## UJI
-### Semua Node selain Durin (Contoh: Isildur)
+### UJI
+#### Semua Node selain Durin (Contoh: Isildur)
 <img width="1128" height="506" alt="image" src="https://github.com/user-attachments/assets/3ad9eb68-09b7-4000-a89c-e171d2dd0d9e" />
+
+## Soal_2
+Raja Pelaut Aldarion, penguasa wilayah Númenor, memutuskan cara pembagian tanah client secara dinamis. Ia menetapkan:
+- Client Dinamis Keluarga Manusia: Mendapatkan tanah di rentang `[prefix ip].1.6` - `[prefix ip].1.34` dan `[prefix ip].1.68` - `[prefix ip].1.94`.
+- Client Dinamis Keluarga Peri: Mendapatkan tanah di rentang `[prefix ip].2.35` - `[prefix ip].2.67` dan `[prefix ip].2.96` - `[prefix ip].2.121`.
+- Khamul yang misterius: Diberikan tanah tetap di `[prefix ip].3.95`, agar keberadaannya selalu diketahui. Pastikan Durin dapat menyampaikan dekrit ini ke semua wilayah yang terhubung dengannya.
+
+### SCRIPT
+#### Aldarion
+```
+#!/bin/bash
+# === [SETUP DHCP SERVER - ALDARION] ===
+
+echo "=== [1/4] Update & install dependencies ==="
+echo "nameserver 192.168.122.1" > /etc/resolv.conf
+apt update -y
+apt install -y isc-dhcp-server procps
+
+echo "=== [2/4] Konfigurasi interface DHCP ==="
+cat > /etc/default/isc-dhcp-server << 'EOF'
+# Interface yang dilayani DHCP Server
+INTERFACESv4="eth0"
+INTERFACESv6=""
+EOF
+
+echo "=== [3/4] Konfigurasi DHCP Server ==="
+cat > /etc/dhcp/dhcpd.conf << 'EOF'
+# Konfigurasi umum
+option domain-name "k02.com";
+option domain-name-servers 192.212.4.3;  # Erendis (DNS Master)
+default-lease-time 600;
+max-lease-time 7200;
+authoritative;
+
+# Subnet 1: Client Dinamis Keluarga Manusia (Amandil)
+# Range: 192.212.1.6-34 dan 192.212.1.68-94
+subnet 192.212.1.0 netmask 255.255.255.0 {
+    range 192.212.1.6 192.212.1.34;
+    range 192.212.1.68 192.212.1.94;
+    option routers 192.212.1.1;
+    option broadcast-address 192.212.1.255;
+    option domain-name-servers 192.212.4.3;
+}
+
+# Subnet 2: Client Dinamis Keluarga Peri (Gilgalad)
+# Range: 192.212.2.35-67 dan 192.212.2.96-121
+subnet 192.212.2.0 netmask 255.255.255.0 {
+    range 192.212.2.35 192.212.2.67;
+    range 192.212.2.96 192.212.2.121;
+    option routers 192.212.2.1;
+    option broadcast-address 192.212.2.255;
+    option domain-name-servers 192.212.4.3;
+}
+
+# Subnet 3: Client Fixed Address (Khamul)
+# Hanya untuk fixed address, TIDAK ADA range dinamis
+subnet 192.212.3.0 netmask 255.255.255.0 {
+    option routers 192.212.3.1;
+    option broadcast-address 192.212.3.255;
+    option domain-name-servers 192.212.4.3;
+}
+
+# Subnet 4: Services (Aldarion, Erendis, Palantir, Narvi)
+subnet 192.212.4.0 netmask 255.255.255.0 {
+    option routers 192.212.4.1;
+}
+
+# Subnet lainnya (jika ada di topologi)
+subnet 192.212.5.0 netmask 255.255.255.0 {
+    option routers 192.212.5.1;
+}
+
+subnet 192.212.6.0 netmask 255.255.255.0 {
+    option routers 192.212.6.1;
+}
+
+# Fixed Address untuk Khamul - IP tetap 192.212.3.95
+host Khamul {
+    hardware ethernet 02:42:67:5c:8c:00;
+    fixed-address 192.212.3.95;
+}
+EOF
+
+echo "=== [4/4] Restart DHCP Server ==="
+service isc-dhcp-server stop >/dev/null 2>&1
+pkill dhcpd >/dev/null 2>&1
+rm -f /var/run/dhcpd.pid
+service isc-dhcp-server start
+sleep 2
+service isc-dhcp-server status
+
+echo ""
+echo "✅ Setup DHCP Server (Aldarion) selesai."
+```
+
+#### Durin
+```
+#!/bin/bash
+# === [SETUP DHCP RELAY - DURIN] ===
+
+echo "=== [1/4] Install DHCP Relay ==="
+apt update -y
+apt install -y isc-dhcp-relay procps
+
+echo "=== [2/4] Konfigurasi DHCP Relay ==="
+cat > /etc/default/isc-dhcp-relay << 'EOF'
+# DHCP Relay menuju Aldarion (192.212.4.2)
+SERVERS="192.212.4.2"
+
+# Interface yang dilayani (semua kecuali eth0/WAN)
+INTERFACES="eth1 eth2 eth3 eth4 eth5"
+
+# Options tambahan
+OPTIONS=""
+EOF
+
+echo "=== [3/4] Konfigurasi IP Forwarding ==="
+cat > /etc/sysctl.conf << 'EOF'
+net.ipv4.ip_forward=1
+EOF
+
+# Terapkan konfigurasi sysctl
+sysctl -p
+
+echo "=== [4/4] Restart DHCP Relay ==="
+service isc-dhcp-relay stop >/dev/null 2>&1
+pkill dhcrelay >/dev/null 2>&1
+service isc-dhcp-relay start
+sleep 2
+service isc-dhcp-relay status
+
+echo ""
+echo "✅ Setup DHCP Relay (Durin) selesai."
+```
+
+#### Amandil
+```
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet dhcp
+    up echo "nameserver 192.168.122.1" > /etc/resolv.conf
+```
+
+#### Gilgalad
+```
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet dhcp
+    up echo "nameserver 192.168.122.1" > /etc/resolv.conf
+```
+
+#### Khamul
+```
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet dhcp
+    hwaddress ether 02:42:67:5c:8c:00
+    up echo "nameserver 192.168.122.1" > /etc/resolv.conf
+```
+
+### UJI
+#### Amandil
+<img width="1561" height="871" alt="image" src="https://github.com/user-attachments/assets/4fbe3fd0-d145-45fa-b7ef-a3974dd0b219" />
+
+#### Gilgalad
+<img width="1555" height="873" alt="image" src="https://github.com/user-attachments/assets/9c259df6-3e74-49cd-b83e-828e60dbd046" />
+
+#### Khamul
+<img width="1564" height="867" alt="image" src="https://github.com/user-attachments/assets/db0fc4cb-9515-4475-9448-2e090a01a7d9" />
