@@ -20,7 +20,7 @@ Glosarium untuk Soal Praktikum Modul 3 :
 | Node | Kategori | Image Docker | Konfigurasi IP | Keluarga Kerajaan |
 | ---------------- | ------------------------ | ------------------------ | ---------------- | ---------------- |
 | Durin | Router (DHCP Relay) | nevarre/gns3-debi:new | Dynamic | Kurcaci (Dwarf) |
-| Minastir | Forward Proxy | nevarre/gns3-debi:new | Static | Manusia (Numenor) |
+| Minastir | DNS Forwarder | nevarre/gns3-debi:new | Static | Manusia (Numenor) |
 | Aldarion | DHCP Server | nevarre/gns3-debi:new | Static | Manusia (Numenor) |
 | Erendis | DNS Master | nevarre/gns3-debi:new | Static | Manusia (Numenor) |
 | Amdir | DNS Slave | nevarre/gns3-debi:new | Static | Peri (Elf) |
@@ -542,3 +542,43 @@ iface eth0 inet dhcp
 
 #### Khamul
 <img width="1564" height="867" alt="image" src="https://github.com/user-attachments/assets/db0fc4cb-9515-4475-9448-2e090a01a7d9" />
+
+## Soal_3
+Untuk mengontrol arus informasi ke dunia luar (Valinor/Internet), sebuah menara pengawas, Minastir didirikan. Minastir mengatur agar semua node (kecuali Durin) hanya dapat mengirim pesan ke luar Arda setelah melewati pemeriksaan di Minastir.
+
+### SCRIPT
+#### Minastir
+```
+#!/bin/bash
+# === [SETUP DNS FORWARDER - MINASTIR] ===
+
+echo "=== [1/4] Install BIND9 ==="
+echo "nameserver 192.168.122.1" > /etc/resolv.conf
+apt update -y
+apt install -y bind9 bind9utils bind9-dnsutils procps
+
+echo "=== [2/4] Konfigurasi named.conf.options ==="
+cat > /etc/bind/named.conf.options << 'EOF'
+options {
+    directory "/var/cache/bind";
+    allow-query { any; };
+    forwarders { 192.168.122.1; };
+    recursion yes;
+    dnssec-validation auto;
+    listen-on-v6 { any; };
+};
+EOF
+
+echo "=== [3/4] Jalankan BIND9 ==="
+pkill named 2>/dev/null
+nohup named -c /etc/bind/named.conf -u bind > /var/log/named.log 2>&1 &
+sleep 2
+ps aux | grep named
+
+echo ""
+echo "✅ DNS Forwarder (Minastir) telah berhasil dikonfigurasi."
+```
+
+### UJI
+#### Semua Node selain Durin dan Minastir (Contoh: Isildur)
+<img width="1015" height="258" alt="image" src="https://github.com/user-attachments/assets/99c92c3a-24c5-45c9-8b13-50c95bd3cc7c" />
