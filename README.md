@@ -1855,3 +1855,99 @@ echo "=========================================="
 echo "  TESTING SELESAI"
 echo "=========================================="
 ```
+
+## Soal_12
+Para Penguasa Peri (Galadriel, Celeborn, Oropher) membangun taman digital mereka menggunakan PHP. Instal nginx dan php8.4-fpm di setiap node worker PHP. Buat file index.php sederhana di /var/www/html masing-masing yang menampilkan nama hostname mereka. Buat agar akses web hanya bisa melalui domain nama, tidak bisa melalui ip.
+
+## 1. Install Nginx dan PHP 8.4-FPM
+```
+apt update
+apt install nginx php8.4-fpm -y
+```
+## 2. Cek dan jalankan manual
+```
+systemctl enable nginx php8.4-fpm
+systemctl start nginx php8.4-fpm
+```
+
+```
+systemctl status nginx
+systemctl status php8.4-fpm
+```
+Jika muncul 
+```
+System has not been booted with systemd as init system (PID 1). Can't operate.
+```
+Jalankan 
+```
+service nginx start
+service php8.4-fpm start
+```
+```
+ps aux | grep nginx
+ps aux | grep php-fpm
+```
+## 3. Buat file web sederhana
+```
+echo "<?php echo 'Halo, saya Galadriel 🌸'; ?>" > /var/www/html/index.php
+```
+## 
+```
+cat /var/www/html/index.php
+```
+## 4. Buat virtual host
+```
+nano /etc/nginx/sites-available/galadriel.k02.com
+```
+```
+server {
+    listen 80;
+    server_name galadriel.k02.com;
+
+    root /var/www/html;
+    index index.php index.html index.htm;
+
+    # Blok akses langsung via IP
+    if ($host ~* ^\d+\.\d+\.\d+\.\d+$) {
+        return 444;
+    }
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/var/run/php/php8.4-fpm.sock;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+
+    access_log /var/log/nginx/galadriel.access.log;
+    error_log /var/log/nginx/galadriel.error.log;
+}
+```
+
+## 5. Aktifkan situs
+```
+ln -s /etc/nginx/sites-available/galadriel.k02.com /etc/nginx/sites-enabled/
+```
+## 6. Tes konfigurasi & reload
+```
+nginx -t
+service nginx reload
+```
+## 7. Jalankan perintah
+```
+echo "<?php echo 'Halo, saya Galadriel 🌸'; ?>" > /var/www/html/index.php
+```
+## UJI HASIL 
+Uji di Khamul 
+
+```
+curl galadriel.k02.com
+```
+
+
