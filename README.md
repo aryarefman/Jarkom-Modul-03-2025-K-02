@@ -1290,5 +1290,14 @@ echo "Laravel dapat diakses di: http://localhost"
 ### UJI
 #### Semua Node selain Durin dan Minastir (Contoh: Amandil)
 ```
-
+apt-get update
+apt-get install -y lynx
+lynx http://192.212.1.2   # Elendil
+lynx http://192.212.1.3   # Isildur
+lynx http://192.212.1.4  # Anarion
 ```
+<img width="1365" height="711" alt="image" src="https://github.com/user-attachments/assets/9112ab75-4c7e-482b-a9db-4312469402b1" />
+<img width="1365" height="717" alt="image" src="https://github.com/user-attachments/assets/552a566e-07fe-4e64-8fd3-bc4fc8ea3c8e" />
+<img width="1365" height="721" alt="image" src="https://github.com/user-attachments/assets/5370783c-e326-4ee9-a1d6-0aa8501546fd" />
+
+
