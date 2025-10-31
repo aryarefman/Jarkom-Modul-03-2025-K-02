@@ -880,6 +880,8 @@ aliansiterakhir     IN  A   192.212.2.4     ; Menunjuk ke Pharazon
 EOF
 
 echo "=== [2/4] Konfigurasi Reverse Zone untuk subnet 192.212.3.0/24 ==="
+# Cek apakah zone sudah ada untuk mencegah duplikasi
+if ! grep -q '3.212.192.in-addr.arpa' /etc/bind/named.conf.local; then
 cat >> /etc/bind/named.conf.local << 'EOF'
 
 zone "3.212.192.in-addr.arpa" {
@@ -889,6 +891,10 @@ zone "3.212.192.in-addr.arpa" {
     also-notify { 192.212.3.4; };      // Notifikasi otomatis ke Amdir
 };
 EOF
+    echo "→ Reverse zone baru ditambahkan ke named.conf.local"
+else
+    echo "→ Reverse zone 3.212.192.in-addr.arpa sudah ada, skip penambahan."
+fi
 
 echo "=== [3/4] Buat Reverse Zone File ==="
 cat > /etc/bind/zones/db.192.212.3 << 'EOF'
@@ -914,11 +920,11 @@ $TTL    604800
 EOF
 
 echo "=== [4/4] Restart BIND9 ==="
-# Kill proses named yang mungkin masih jalan
+# Hentikan proses named lama jika ada
 pkill -9 named 2>/dev/null
 sleep 1
 
-# Cek syntax config
+# Cek syntax konfigurasi
 named-checkconf /etc/bind/named.conf
 if [ $? -eq 0 ]; then
     echo "✓ Config syntax OK"
@@ -927,15 +933,15 @@ else
     exit 1
 fi
 
-# Cek zone files
+# Cek zone file
 named-checkzone k02.com /etc/bind/zones/db.k02.com
 named-checkzone 3.212.192.in-addr.arpa /etc/bind/zones/db.192.212.3
 
-# Start named
+# Jalankan BIND9
 named -u bind -c /etc/bind/named.conf
 sleep 2
 
-# Cek apakah named jalan
+# Pastikan BIND9 berjalan
 if ps aux | grep -v grep | grep named > /dev/null; then
     echo "✓ BIND9 (named) is running"
     ps aux | grep named | grep -v grep
@@ -1029,4 +1035,128 @@ host -t TXT aliansiterakhir.k02.com
 ```
 <img width="785" height="318" alt="image" src="https://github.com/user-attachments/assets/91108cf6-bb5a-47ad-bdf2-33d8535b5550" />
 
+## Soal_6
+Aldarion menetapkan aturan waktu peminjaman tanah. Ia mengatur:
+- Client Dinamis Keluarga Manusia dapat meminjam tanah selama setengah jam.
+- Client Dinamis Keluarga Peri hanya seperenam jam.
+- Batas waktu maksimal peminjaman untuk semua adalah satu jam.
+
+### SCRIPT
+#### Aldarion
+```
+#!/bin/bash
+# === [UPDATE DHCP SERVER - ALDARION untuk Soal 6] ===
+
+echo "=== [1/2] Update Konfigurasi DHCP dengan Lease Time ==="
+cat > /etc/dhcp/dhcpd.conf << 'EOF'
+# Konfigurasi umum
+option domain-name "k02.com";
+option domain-name-servers 192.212.3.3;  # Erendis (DNS Master)
+default-lease-time 600;
+max-lease-time 3600;  # Maksimal 1 jam untuk semua client
+authoritative;
+
+# Subnet 1: Client Dinamis Keluarga Manusia (Amandil)
+# Range: 192.212.1.6-34 dan 192.212.1.68-94
+# Lease time: 30 menit (1800 detik)
+subnet 192.212.1.0 netmask 255.255.255.0 {
+    range 192.212.1.6 192.212.1.34;
+    range 192.212.1.68 192.212.1.94;
+    option routers 192.212.1.1;
+    option broadcast-address 192.212.1.255;
+    option domain-name-servers 192.212.3.3;
+    default-lease-time 1800;  # 30 menit untuk Keluarga Manusia
+    max-lease-time 3600;       # Maksimal 1 jam
+}
+
+# Subnet 2: Client Dinamis Keluarga Peri (Gilgalad)
+# Range: 192.212.2.35-67 dan 192.212.2.96-121
+# Lease time: 10 menit (600 detik)
+subnet 192.212.2.0 netmask 255.255.255.0 {
+    range 192.212.2.35 192.212.2.67;
+    range 192.212.2.96 192.212.2.121;
+    option routers 192.212.2.1;
+    option broadcast-address 192.212.2.255;
+    option domain-name-servers 192.212.3.3;
+    default-lease-time 600;    # 10 menit untuk Keluarga Peri
+    max-lease-time 3600;        # Maksimal 1 jam
+}
+
+# Subnet 3: Client Fixed Address (Khamul)
+# Hanya untuk fixed address, TIDAK ADA range dinamis
+subnet 192.212.3.0 netmask 255.255.255.0 {
+    option routers 192.212.3.1;
+    option broadcast-address 192.212.3.255;
+    option domain-name-servers 192.212.3.3;
+}
+
+# Subnet 4: Services (Aldarion, Erendis, Palantir, Narvi)
+subnet 192.212.4.0 netmask 255.255.255.0 {
+    option routers 192.212.4.1;
+}
+
+# Subnet lainnya (jika ada di topologi)
+subnet 192.212.5.0 netmask 255.255.255.0 {
+    option routers 192.212.5.1;
+}
+
+subnet 192.212.6.0 netmask 255.255.255.0 {
+    option routers 192.212.6.1;
+}
+
+# Fixed Address untuk Khamul - IP tetap 192.212.3.95
+host Khamul {
+    hardware ethernet 02:42:67:5c:8c:00;
+    fixed-address 192.212.3.95;
+}
+EOF
+
+echo "=== [2/2] Restart DHCP Server ==="
+service isc-dhcp-server stop >/dev/null 2>&1
+pkill dhcpd >/dev/null 2>&1
+rm -f /var/run/dhcpd.pid
+service isc-dhcp-server start
+sleep 2
+service isc-dhcp-server status
+
+echo ""
+echo "✅ DHCP Server (Aldarion) berhasil diupdate dengan lease time:"
+echo "   - Keluarga Manusia (subnet 192.212.1.0): 1800 detik (30 menit)"
+echo "   - Keluarga Peri (subnet 192.212.2.0): 600 detik (10 menit)"
+echo "   - Max lease time semua: 3600 detik (1 jam)"
+echo ""
+```
+
+### UJI
+#### Test pada Amandil (Client Dinamis Keluarga Manusia)
+```
+apt update
+apt install isc-dhcp-client -y
+
+# Release IP lama
+dhclient -r eth0
+
+# Request IP baru
+dhclient -v eth0
+
+# Cek lease time yang didapat
+cat /var/lib/dhcp/dhclient.leases
+```
+<img width="605" height="370" alt="image" src="https://github.com/user-attachments/assets/5538fb09-e1a9-41ac-971e-90164bc04013" />
+
+### Test pada Gilgalad (Client Dinamis Keluarga Peri)
+```
+apt update
+apt install isc-dhcp-client -y
+
+# Release IP lama
+dhclient -r eth0
+
+# Request IP baru
+dhclient -v eth0
+
+# Cek lease time yang didapat
+cat /var/lib/dhcp/dhclient.leases
+```
+<img width="613" height="370" alt="image" src="https://github.com/user-attachments/assets/e1612baf-c69e-4e85-896d-8699a9691fc5" />
 
