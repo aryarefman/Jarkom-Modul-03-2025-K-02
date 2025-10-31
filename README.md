@@ -1869,11 +1869,6 @@ apt install nginx php8.4-fpm -y
 systemctl enable nginx php8.4-fpm
 systemctl start nginx php8.4-fpm
 ```
-
-```
-systemctl status nginx
-systemctl status php8.4-fpm
-```
 Jika muncul 
 ```
 System has not been booted with systemd as init system (PID 1). Can't operate.
@@ -1891,7 +1886,6 @@ ps aux | grep php-fpm
 ```
 echo "<?php echo 'Halo, saya Galadriel 🌸'; ?>" > /var/www/html/index.php
 ```
-## 
 ```
 cat /var/www/html/index.php
 ```
@@ -1938,10 +1932,6 @@ ln -s /etc/nginx/sites-available/galadriel.k02.com /etc/nginx/sites-enabled/
 ```
 nginx -t
 service nginx reload
-```
-## 7. Jalankan perintah
-```
-echo "<?php echo 'Halo, saya Galadriel 🌸'; ?>" > /var/www/html/index.php
 ```
 ## UJI HASIL 
 Uji di Khamul 
