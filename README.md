@@ -1144,7 +1144,7 @@ cat /var/lib/dhcp/dhclient.leases
 ```
 <img width="605" height="370" alt="image" src="https://github.com/user-attachments/assets/5538fb09-e1a9-41ac-971e-90164bc04013" />
 
-### Test pada Gilgalad (Client Dinamis Keluarga Peri)
+#### Test pada Gilgalad (Client Dinamis Keluarga Peri)
 ```
 apt update
 apt install isc-dhcp-client -y
@@ -1160,3 +1160,185 @@ cat /var/lib/dhcp/dhclient.leases
 ```
 <img width="613" height="370" alt="image" src="https://github.com/user-attachments/assets/e1612baf-c69e-4e85-896d-8699a9691fc5" />
 
+## Soal_7
+Para Ksatria Númenor (Elendil, Isildur, Anarion) mulai membangun benteng pertahanan digital mereka menggunakan teknologi Laravel. Instal semua tools yang dibutuhkan (php8.4, composer, nginx) dan dapatkan cetak biru benteng dari Resource-laravel di setiap node worker Laravel. Cek dengan lynx di client.
+
+### Script
+#### Laravel Workers (Elendil, Isildur, Anarion)
+```
+#!/bin/bash
+# === [SETUP LARAVEL WORKER - FIX PHP 8.4 COMPATIBILITY] ===
+
+echo "=== [1/8] Update & Install Dependencies ==="
+echo "nameserver 192.168.122.1" > /etc/resolv.conf
+apt update -y
+apt install -y lsb-release apt-transport-https ca-certificates wget curl git
+
+echo "=== [2/8] Add PHP 8.4 Repository (Sury) ==="
+wget -O /etc/apt/trusted.gpg.d/php.gpg https://packages.sury.org/php/apt.gpg
+echo "deb https://packages.sury.org/php/ $(lsb_release -sc) main" | tee /etc/apt/sources.list.d/php.list
+apt update -y
+
+echo "=== [3/8] Install PHP 8.4 & Extensions ==="
+apt install -y php8.4 php8.4-fpm php8.4-cli php8.4-common \
+    php8.4-mbstring php8.4-xml php8.4-mysql php8.4-curl \
+    php8.4-intl php8.4-opcache php8.4-readline \
+    php8.4-zip php8.4-gd unzip
+
+php --version
+
+echo "=== [4/8] Install Nginx ==="
+apt install -y nginx
+
+echo "=== [5/8] Install Composer 2 ==="
+wget https://getcomposer.org/download/2.0.13/composer.phar
+chmod +x composer.phar
+mv composer.phar /usr/bin/composer
+composer -V
+
+echo "=== [6/8] Clone Laravel Project ==="
+cd /var/www
+git clone https://github.com/elshiraphine/laravel-simple-rest-api.git
+cd laravel-simple-rest-api
+
+echo "=== [7/8] Install Laravel Dependencies with Update ==="
+# Hapus composer.lock untuk force update ke versi compatible
+rm -f composer.lock
+
+# Update composer.json untuk require PHP 8.4
+composer config platform.php 8.4.14
+
+# Install dengan update dependencies
+composer update --no-interaction --prefer-dist
+
+# Copy .env file
+cp .env.example .env
+
+# Generate application key
+php artisan key:generate
+
+echo "=== [8/8] Set Permissions ==="
+chown -R www-data:www-data /var/www/laravel-simple-rest-api/storage
+chown -R www-data:www-data /var/www/laravel-simple-rest-api/bootstrap/cache
+chmod -R 775 /var/www/laravel-simple-rest-api/storage
+chmod -R 775 /var/www/laravel-simple-rest-api/bootstrap/cache
+
+echo ""
+echo "✅ Laravel Worker setup selesai!"
+echo "Lokasi project: /var/www/laravel-simple-rest-api"
+echo ""
+```
+
+#### Elendil
+```
+cat > /etc/nginx/sites-available/laravel << 'EOF'
+server {
+    listen 8001;
+
+    root /var/www/laravel-simple-rest-api/public;
+    index index.php index.html index.htm;
+    server_name _;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/var/run/php/php8.4-fpm.sock;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+
+    error_log /var/log/nginx/laravel_error.log;
+    access_log /var/log/nginx/laravel_access.log;
+}
+EOF
+
+# Buat symlink
+ln -s /etc/nginx/sites-available/laravel /etc/nginx/sites-enabled/
+
+# Start services
+service php8.4-fpm start
+service nginx restart
+```
+
+#### Isildur
+```
+cat > /etc/nginx/sites-available/laravel << 'EOF'
+server {
+    listen 8002;
+
+    root /var/www/laravel-simple-rest-api/public;
+    index index.php index.html index.htm;
+    server_name _;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/var/run/php/php8.4-fpm.sock;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+
+    error_log /var/log/nginx/laravel_error.log;
+    access_log /var/log/nginx/laravel_access.log;
+}
+EOF
+
+# Buat symlink
+ln -s /etc/nginx/sites-available/laravel /etc/nginx/sites-enabled/
+
+# Start services
+service php8.4-fpm start
+service nginx restart
+```
+
+#### Anarion
+```
+cat > /etc/nginx/sites-available/laravel << 'EOF'
+server {
+    listen 8003;
+
+    root /var/www/laravel-simple-rest-api/public;
+    index index.php index.html index.htm;
+    server_name _;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/var/run/php/php8.4-fpm.sock;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+
+    error_log /var/log/nginx/laravel_error.log;
+    access_log /var/log/nginx/laravel_access.log;
+}
+EOF
+
+# Buat symlink
+ln -s /etc/nginx/sites-available/laravel /etc/nginx/sites-enabled/
+
+# Start services
+service php8.4-fpm start
+service nginx restart
+```
+
+### UJI
+#### Semua Node selain Durin dan Minastir (Contoh: Amandil)
+```
+
+```
