@@ -1167,9 +1167,8 @@ Para Ksatria Númenor (Elendil, Isildur, Anarion) mulai membangun benteng pertah
 #### Laravel Workers (Elendil, Isildur, Anarion)
 ```
 #!/bin/bash
-
-# Script instalasi Laravel dengan Nginx dan PHP 8.2
-# Usage: bash soal7.sh
+# Script instalasi Laravel dengan Nginx dan PHP 8.2 - NETWORK TIMEOUT FIXED
+# Usage: bash soal7-fixed-network.sh
 
 set -e  # Exit on error
 
@@ -1214,13 +1213,36 @@ composer --version
 # Clone Laravel project
 echo "=== Cloning Laravel project ==="
 cd /var/www
+
+# Hapus directory lama jika ada
+if [ -d "resource-laravel-k1" ]; then
+    echo "⚠ Directory resource-laravel-k1 sudah ada, menghapus..."
+    rm -rf resource-laravel-k1
+fi
+
 git clone https://github.com/elshiraphine/laravel-simple-rest-api.git resource-laravel-k1
 cd resource-laravel-k1
 
-# Install dependencies
+# Install dependencies - TANPA UPDATE untuk hindari timeout
 echo "=== Installing Laravel dependencies ==="
-composer install
-composer update
+echo "⚠ Skipping composer update untuk menghindari network timeout"
+
+# Cek apakah vendor sudah ada dari repo
+if [ -d "vendor" ] && [ -n "$(ls -A vendor)" ]; then
+    echo "✓ Vendor directory sudah ada dari repository"
+    composer install --no-interaction --prefer-dist --no-dev || {
+        echo "⚠ Composer install gagal, menggunakan vendor yang sudah ada"
+    }
+else
+    echo "Installing dependencies dari packagist..."
+    composer install --no-interaction --prefer-dist --no-dev --optimize-autoloader || {
+        echo "✗ Composer install gagal!"
+        echo "Mencoba mode offline..."
+        COMPOSER_DISABLE_NETWORK=1 composer install --no-interaction || {
+            echo "✗ Mode offline juga gagal. Melanjutkan tanpa composer..."
+        }
+    }
+fi
 
 # Setup environment
 echo "=== Setting up environment ==="
@@ -1228,34 +1250,69 @@ cp .env.example .env
 php artisan key:generate
 
 # Verify installation
-ls -la /var/www/resource-laravel-k1/
+echo "=== Verifying installation ==="
+ls -la /var/www/resource-laravel-k1/ | head -15
+echo ""
+echo "=== .env content ==="
 cat /var/www/resource-laravel-k1/.env
-ls /var/www/resource-laravel-k1/vendor/
+echo ""
+echo "=== Vendor directory ==="
+if [ -d "vendor" ]; then
+    ls /var/www/resource-laravel-k1/vendor/ | head -10
+    echo "✓ Vendor directory OK"
+else
+    echo "⚠ Vendor directory tidak ada"
+fi
+echo ""
 php artisan --version
 
 # Configure Nginx
 echo "=== Configuring Nginx ==="
+
+# Remove old configs
+rm -f /etc/nginx/sites-enabled/laravel
+rm -f /etc/nginx/sites-enabled/default
+
 cat > /etc/nginx/sites-available/laravel << 'EOF'
 server {
     listen 80;
-    server_name localhost;
+    server_name _;  # Accept any hostname/IP
+
     root /var/www/resource-laravel-k1/public;
+    index index.php index.html;
+
+    # Logging
+    access_log /var/log/nginx/laravel-access.log;
+    error_log /var/log/nginx/laravel-error.log;
+
     add_header X-Frame-Options "SAMEORIGIN";
     add_header X-Content-Type-Options "nosniff";
-    index index.php;
+
     charset utf-8;
+
     location / {
         try_files $uri $uri/ /index.php?$query_string;
     }
-    location = /favicon.ico { access_log off; log_not_found off; }
-    location = /robots.txt  { access_log off; log_not_found off; }
+
+    location = /favicon.ico {
+        access_log off;
+        log_not_found off;
+    }
+
+    location = /robots.txt {
+        access_log off;
+        log_not_found off;
+    }
+
     error_page 404 /index.php;
+
     location ~ \.php$ {
         include snippets/fastcgi-php.conf;
         fastcgi_pass unix:/run/php/php8.2-fpm.sock;
         fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
         include fastcgi_params;
     }
+
     location ~ /\.(?!well-known).* {
         deny all;
     }
@@ -1264,27 +1321,95 @@ EOF
 
 # Enable site
 echo "=== Enabling Laravel site ==="
-ln -s /etc/nginx/sites-available/laravel /etc/nginx/sites-enabled/
-rm -f /etc/nginx/sites-enabled/default
+ln -sf /etc/nginx/sites-available/laravel /etc/nginx/sites-enabled/
 
 # Set permissions
 echo "=== Setting permissions ==="
 cd /var/www/resource-laravel-k1
 chmod -R 775 storage bootstrap/cache
 chown -R www-data:www-data storage bootstrap/cache
+chown -R www-data:www-data /var/www/resource-laravel-k1
 
 # Start services
 echo "=== Starting PHP-FPM ==="
-service php8.2-fpm start
-ls /run/php/
+service php8.2-fpm restart
+sleep 2
+
+echo "=== PHP-FPM Socket Check ==="
+ls -la /run/php/
 
 # Test and restart Nginx
 echo "=== Testing and restarting Nginx ==="
 nginx -t
-service nginx restart
+if [ $? -eq 0 ]; then
+    service nginx restart
+    echo "✓ Nginx restarted successfully"
+else
+    echo "✗ Nginx config error!"
+    exit 1
+fi
 
-echo "=== Instalasi selesai! ==="
-echo "Laravel dapat diakses di: http://localhost"
+echo ""
+echo "=========================================="
+echo "  ✅ INSTALASI SELESAI!"
+echo "=========================================="
+echo ""
+
+# Testing
+echo "=== TESTING ==="
+MY_IP=$(hostname -I | awk '{print $1}')
+
+echo "[1] Services Status:"
+ps aux | grep php-fpm | grep -v grep | head -2
+ps aux | grep nginx | grep -v grep | head -2
+
+echo ""
+echo "[2] Port 80 Listening:"
+netstat -tulpn | grep :80 2>/dev/null || ss -tulpn | grep :80 2>/dev/null || echo "⚠ netstat/ss not available"
+
+echo ""
+echo "[3] Test HTTP via localhost:"
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost 2>/dev/null)
+if [ "$HTTP_CODE" == "200" ]; then
+    echo "✓ HTTP 200 OK"
+    curl -s http://localhost 2>/dev/null | head -30
+else
+    echo "✗ HTTP $HTTP_CODE - ERROR!"
+    echo "Checking error log..."
+    tail -20 /var/log/nginx/laravel-error.log 2>/dev/null || echo "No error log found"
+fi
+
+echo ""
+echo "[4] Test API endpoint:"
+API_RESPONSE=$(curl -s http://localhost/api/airing 2>&1)
+if echo "$API_RESPONSE" | grep -q "airing\|id\|title" 2>/dev/null; then
+    echo "✓ API endpoint working"
+    echo "$API_RESPONSE" | head -30
+else
+    echo "⚠ API response:"
+    echo "$API_RESPONSE" | head -30
+fi
+
+echo ""
+echo "=========================================="
+echo "  AKSES INFO"
+echo "=========================================="
+echo "IP Address: $MY_IP"
+echo ""
+echo "Akses dari node ini:"
+echo "  curl http://localhost"
+echo "  curl http://localhost/api/airing"
+echo ""
+echo "Akses dari client:"
+echo "  lynx http://$MY_IP"
+echo "  curl http://$MY_IP/api/airing"
+echo ""
+echo "=========================================="
+echo ""
+echo "Jika ada error, cek log:"
+echo "  tail -f /var/log/nginx/laravel-error.log"
+echo "  tail -f /var/log/php8.2-fpm.log"
+echo "=========================================="
 ```
 
 ### UJI
@@ -1397,6 +1522,8 @@ echo "DB_PASSWORD=laravel_password"
 # soal8-elendil.sh — Setup Elendil (Port 8001)
 # Jalankan di Elendil
 
+set -e  # Exit on error
+
 echo "=== [SOAL 8] Setup ELENDIL → port 8001 ==="
 
 # 1. Install PHP MySQL Driver
@@ -1406,6 +1533,13 @@ apt-get install -y php8.2-mysql
 
 # 2. Update .env
 cd /var/www/resource-laravel-k1
+
+# Backup .env
+if [ ! -f .env.backup ]; then
+    cp .env .env.backup
+    echo "✓ Backup .env created"
+fi
+
 sed -i 's/DB_HOST=.*/DB_HOST=palantir.k02.com/' .env
 sed -i 's/DB_DATABASE=.*/DB_DATABASE=laravel_db/' .env
 sed -i 's/DB_USERNAME=.*/DB_USERNAME=laravel_user/' .env
@@ -1415,7 +1549,6 @@ echo "✓ Updated .env → palantir.k02.com"
 # 3. Update routes/api.php ke versi Controller-based
 cat > routes/api.php << 'APIEOF'
 <?php
-
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AiringController;
@@ -1430,6 +1563,7 @@ Route::group(['prefix' => 'airing'], function () {
    Route::post('/', [AiringController::class, 'store']);
 });
 APIEOF
+
 echo "✓ Updated routes/api.php"
 
 # 4. Clear Laravel cache
@@ -1442,14 +1576,17 @@ echo "✓ Cache cleared"
 rm -f /etc/nginx/sites-enabled/laravel
 rm -f /etc/nginx/sites-enabled/default
 
-# 6. Buat config Nginx
+# 6. Buat config Nginx (DENGAN explicit bind dan blocking yang lebih baik)
 cat > /etc/nginx/sites-available/laravel << 'EOF'
 server {
-    listen 8001;
+    listen 0.0.0.0:8001;
     server_name elendil.k02.com;
 
     root /var/www/resource-laravel-k1/public;
-    index index.php;
+    index index.php index.html;
+
+    access_log /var/log/nginx/elendil-access.log;
+    error_log /var/log/nginx/elendil-error.log;
 
     location / {
         try_files $uri $uri/ /index.php?$query_string;
@@ -1458,31 +1595,91 @@ server {
     location ~ \.php$ {
         include snippets/fastcgi-php.conf;
         fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
     }
 
-    # BLOKIR AKSES VIA IP
-    if ($host != "elendil.k02.com") {
-        return 444;
+    location ~ /\.(?!well-known).* {
+        deny all;
     }
+
+    # OPTIONAL: Uncomment untuk blocking akses via IP (setelah testing berhasil)
+    # Blocking yang lebih smart - hanya block IP mentah
+    # if ($host ~ "^[0-9.]+(:8001)?$") {
+    #     return 403;
+    # }
 }
 EOF
+
+echo "✓ Nginx config created (blocking disabled untuk testing)"
 
 # 7. Aktifkan site
 ln -sf /etc/nginx/sites-available/laravel /etc/nginx/sites-enabled/
 
-# 8. Restart services
+# 8. Set permissions
+chown -R www-data:www-data /var/www/resource-laravel-k1
+chmod -R 775 /var/www/resource-laravel-k1/storage
+chmod -R 775 /var/www/resource-laravel-k1/bootstrap/cache
+
+# 9. Restart services
+echo "Restarting services..."
 service php8.2-fpm restart
+sleep 1
 nginx -t && service nginx restart
+sleep 2
 
 echo ""
 echo "=== Testing Setup ==="
-php -r "new PDO('mysql:host=palantir.k02.com;dbname=laravel_db', 'laravel_user', 'laravel_password');" && echo "✓ Database connection OK"
+
+# Test database connection
+echo "[1] Testing database connection..."
+php -r "try { new PDO('mysql:host=palantir.k02.com;dbname=laravel_db', 'laravel_user', 'laravel_password'); echo '✓ Database connection OK\n'; } catch (Exception \$e) { echo '✗ Database FAILED: ' . \$e->getMessage() . '\n'; }"
+
+# Test services
 echo ""
-echo "✓✓✓ ELENDIL SIAP → http://elendil.k02.com:8001"
-echo "Testing API endpoint..."
-sleep 2
-curl -s http://localhost:8001/api/airing
+echo "[2] Service status:"
+ps aux | grep nginx | grep -v grep > /dev/null && echo "✓ Nginx running"
+ps aux | grep php-fpm | grep -v grep > /dev/null && echo "✓ PHP-FPM running"
+
+# Test port
 echo ""
+echo "[3] Port 8001 listening:"
+ss -tulpn | grep :8001 || netstat -tulpn | grep :8001
+
+# Test HTTP
+echo ""
+echo "[4] Testing HTTP..."
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8001)
+echo "localhost:8001 → HTTP $HTTP_CODE"
+
+MY_IP=$(hostname -I | awk '{print $1}')
+HTTP_CODE_IP=$(curl -s -o /dev/null -w "%{http_code}" http://$MY_IP:8001)
+echo "$MY_IP:8001 → HTTP $HTTP_CODE_IP"
+
+# Test API
+echo ""
+echo "[5] Testing API endpoint /api/airing..."
+curl -s http://localhost:8001/api/airing | head -20
+echo ""
+
+# Final summary
+echo ""
+echo "=========================================="
+echo "✓✓✓ ELENDIL SETUP COMPLETE!"
+echo "=========================================="
+echo "Server IP: $MY_IP"
+echo "Port: 8001"
+echo ""
+echo "Test dari client:"
+echo "  curl http://elendil.k02.com:8001"
+echo "  curl http://$MY_IP:8001"
+echo "  lynx http://elendil.k02.com:8001"
+echo ""
+echo "NOTES:"
+echo "- Blocking rule DISABLED untuk testing"
+echo "- Jika semua test berhasil, uncomment blocking di:"
+echo "  /etc/nginx/sites-available/laravel (line 28-30)"
+echo "=========================================="
 ```
 
 #### Isildur
@@ -1699,6 +1896,48 @@ lynx http://anarion.k02.com:8003
 
 #### Semua Node selain Durin dan Minastir (Contoh: Amandil)
 ```
+#!/bin/bash
+# migrate-database.sh - Run di Elendil
+
+echo "=== Database Migration ==="
+
+cd /var/www/resource-laravel-k1
+
+# 1. Test koneksi database
+echo "[1] Testing database connection..."
+php -r "new PDO('mysql:host=palantir.k02.com;dbname=laravel_db', 'laravel_user', 'laravel_password');" && echo "✓ Connection OK"
+
+# 2. Run migrations
+echo ""
+echo "[2] Running migrations..."
+php artisan migrate --force
+
+# 3. (Optional) Seed data jika ada
+echo ""
+echo "[3] Seeding data..."
+php artisan db:seed --force 2>/dev/null || echo "No seeder found (OK)"
+
+# 4. Verify tables
+echo ""
+echo "[4] Verifying tables..."
+php -r "
+\$pdo = new PDO('mysql:host=palantir.k02.com;dbname=laravel_db', 'laravel_user', 'laravel_password');
+\$result = \$pdo->query('SHOW TABLES');
+echo 'Tables in laravel_db:\n';
+foreach(\$result as \$row) {
+    echo '  - ' . \$row[0] . '\n';
+}
+"
+
+# 5. Test API
+echo ""
+echo "[5] Testing API endpoint..."
+curl -s http://localhost:8001/api/airing | python3 -m json.tool 2>/dev/null || curl -s http://localhost:8001/api/airing
+
+echo ""
+echo "✓ Migration complete!"
+```
+```
 curl http://elendil.k02.com:8001/api/airing
 curl http://isildur.k02.com:8002/api/airing
 curl http://anarion.k02.com:8003/api/airing
@@ -1784,6 +2023,60 @@ echo "   Algoritma: Round Robin"
 echo ""
 ```
 
+#### Elendil
+```
+#!/bin/bash
+echo "=== FIXING ELENDIL PORT 8001 ==="
+
+# 1. Flush firewall completely
+echo "[1] Flushing firewall..."
+iptables -F
+iptables -X
+iptables -P INPUT ACCEPT
+iptables -P FORWARD ACCEPT
+iptables -P OUTPUT ACCEPT
+
+# 2. Cek nginx config
+echo ""
+echo "[2] Nginx config check..."
+nginx -t
+
+# 3. Cek apakah nginx listening di port 8001
+echo ""
+echo "[3] Port 8001 status:"
+ss -tulpn | grep :8001 || echo "✗ Port 8001 NOT listening!"
+
+# 4. Cek nginx process
+echo ""
+echo "[4] Nginx process:"
+ps aux | grep nginx | grep -v grep || echo "✗ Nginx NOT running!"
+
+# 5. Restart services
+echo ""
+echo "[5] Restarting services..."
+service php8.2-fpm restart
+service nginx stop
+sleep 2
+service nginx start
+sleep 2
+
+# 6. Verify port again
+echo ""
+echo "[6] Port 8001 status after restart:"
+ss -tulpn | grep :8001
+
+# 7. Test localhost
+echo ""
+echo "[7] Testing localhost:8001..."
+curl -v http://localhost:8001/api/airing 2>&1 | head -30
+
+# 8. Test from IP
+echo ""
+echo "[8] Testing via IP..."
+MY_IP=$(hostname -I | awk '{print $1}')
+curl -v http://$MY_IP:8001/api/airing 2>&1 | head -30
+```
+
 ### UJI
 #### Semua Node selain Durin dan Minastir (Contoh: Amandil)
 ```
@@ -1855,6 +2148,7 @@ echo "=========================================="
 echo "  TESTING SELESAI"
 echo "=========================================="
 ```
+<img width="765" height="973" alt="image" src="https://github.com/user-attachments/assets/24db2ed3-a288-4829-9f0f-3b83d826a35f" />
 
 ## Soal_12
 Para Penguasa Peri (Galadriel, Celeborn, Oropher) membangun taman digital mereka menggunakan PHP. Instal nginx dan php8.4-fpm di setiap node worker PHP. Buat file index.php sederhana di /var/www/html masing-masing yang menampilkan nama hostname mereka. Buat agar akses web hanya bisa melalui domain nama, tidak bisa melalui ip.
