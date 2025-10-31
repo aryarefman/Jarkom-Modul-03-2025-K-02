@@ -2545,12 +2545,11 @@ curl galadriel.k02.com
 curl celeborn.k02.com
 curl oropher.k02.com
 ```
+<img width="420" height="47" alt="image" src="https://github.com/user-attachments/assets/067c40af-2b40-4858-ab54-e1ab4f26f371"/><br>
+<img width="421" height="41" alt="image" src="https://github.com/user-attachments/assets/461f48ba-4898-46d3-9c2d-eae72f1fcaa2"/><br>
+<img width="353" height="44" alt="image" src="https://github.com/user-attachments/assets/897d94bf-70a1-463d-bedc-616b8b34dc3b"/>
 
-<img width="400" height="47" alt="image" src="https://github.com/user-attachments/assets/97f7d335-fe19-47b8-9b5b-411cfada5468"/><br>
 
-<img width="438" height="42" alt="image" src="https://github.com/user-attachments/assets/80528db6-aa71-47ec-852e-e787c2975a0c"/><br>
-
-<img width="409" height="42" alt="image" src="https://github.com/user-attachments/assets/966b92c6-ff56-45c9-bd29-afea4c320c25"/>
 
 ## Soal_13
 Setiap taman Peri harus dapat diakses. Konfigurasikan nginx di setiap worker PHP untuk meneruskan permintaan file .php ke socket php-fpm yang sesuai. Atur agar Galadriel mendengarkan di port 8004, Celeborn di 8005, dan Oropher di 8006.
