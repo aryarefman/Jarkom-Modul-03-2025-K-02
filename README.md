@@ -1940,4 +1940,5 @@ Uji di Khamul
 curl galadriel.k02.com
 ```
 
+<img width="386" height="64" alt="image" src="https://github.com/user-attachments/assets/54df0945-3aeb-430b-9129-e640e67e0707" />
 
