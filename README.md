@@ -1859,6 +1859,7 @@ echo "=========================================="
 ## Soal_12
 Para Penguasa Peri (Galadriel, Celeborn, Oropher) membangun taman digital mereka menggunakan PHP. Instal nginx dan php8.4-fpm di setiap node worker PHP. Buat file index.php sederhana di /var/www/html masing-masing yang menampilkan nama hostname mereka. Buat agar akses web hanya bisa melalui domain nama, tidak bisa melalui ip.
 
+## Galadriel,Celeborn,Oropher
 ## 1. Install Nginx dan PHP 8.4-FPM
 ```
 apt update
@@ -1927,6 +1928,14 @@ server {
 ## 5. Aktifkan situs
 ```
 ln -s /etc/nginx/sites-available/galadriel.k02.com /etc/nginx/sites-enabled/
+```
+## Pastikan hanya ada symlink yang valid
+```
+ls -l /etc/nginx/sites-enabled/
+```
+## hapus symlink jika ada yang lain
+```
+rm /etc/nginx/sites-enabled/galadriel.k02.com
 ```
 ## 6. Tes konfigurasi & reload
 ```
