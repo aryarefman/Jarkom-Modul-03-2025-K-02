@@ -1938,7 +1938,7 @@ echo ""
 echo "Tes akses:"
 echo "  curl http://${HOSTNAME}.k02.com"
 ```
-## COBA DI galadriel, celeborn, oropher
+## COBA Di galadriel, celeborn, oropher
 ```
 nano soal12.sh
 ```
@@ -1966,6 +1966,148 @@ curl oropher.k02.com
 
 <img width="409" height="42" alt="image" src="https://github.com/user-attachments/assets/966b92c6-ff56-45c9-bd29-afea4c320c25"/>
 
+## Soal_13
+Setiap taman Peri harus dapat diakses. Konfigurasikan nginx di setiap worker PHP untuk meneruskan permintaan file .php ke socket php-fpm yang sesuai. Atur agar Galadriel mendengarkan di port 8004, Celeborn di 8005, dan Oropher di 8006.
+
+## SCRIPT SOAL 13 
+```
+#!/bin/bash
+# =======================================================
+# SOAL 13 - Konfigurasi Nginx dan PHP-FPM untuk Taman Peri
+# Setiap taman (Galadriel, Celeborn, Oropher) mendengarkan
+# di port berbeda: 8004, 8005, dan 8006
+# =======================================================
+
+# Pastikan script dijalankan sebagai root
+if [ "$EUID" -ne 0 ]; then
+  echo "Harap jalankan script ini sebagai root!"
+  exit
+fi
+
+echo "=============================================="
+echo "     ⚙️  KONFIGURASI TAMAN PERI DIMULAI"
+echo "=============================================="
+
+# Pastikan nginx dan php-fpm sudah terpasang
+echo "[+] Memastikan nginx dan php8.4-fpm terpasang..."
+apt update -y
+apt install -y nginx php8.4-fpm
+
+# Cek versi socket PHP-FPM yang tersedia
+php_sock=$(find /var/run/php/ -name "php*-fpm.sock" | head -n1)
+if [ -z "$php_sock" ]; then
+  echo "❌ Tidak ditemukan socket php-fpm di /var/run/php/"
+  exit 1
+else
+  echo "[+] Socket PHP-FPM ditemukan: $php_sock"
+fi
+
+# Menonaktifkan konfigurasi default
+echo "[+] Menghapus konfigurasi default nginx..."
+rm -f /etc/nginx/sites-enabled/default
+
+# Fungsi pembuat konfigurasi per-host
+setup_worker() {
+  local name=$1
+  local port=$2
+  local domain="${name}.k02.com"
+  local webroot="/var/www/${domain}"
+
+  echo ""
+  echo "----------------------------------------------"
+  echo "[+] Membuat konfigurasi untuk ${domain} (port ${port})"
+  echo "----------------------------------------------"
+
+  # Membuat root web
+  mkdir -p ${webroot}
+  echo "<?php echo 'Halo, aku adalah ${name}! Hostname: ' . gethostname(); ?>" > ${webroot}/index.php
+  chown -R www-data:www-data ${webroot}
+
+  # Membuat file konfigurasi nginx
+  cat > /etc/nginx/sites-available/${domain} << EOF
+server {
+    listen ${port};
+    server_name ${domain};
+
+    root ${webroot};
+    index index.php index.html index.htm;
+
+    # Blok akses via IP langsung
+    if (\$host ~* ^\d+\.\d+\.\d+\.\d+$) {
+        return 444;
+    }
+
+    location / {
+        try_files \$uri \$uri/ =404;
+    }
+
+    location ~ \.php\$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:${php_sock};
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+
+    access_log /var/log/nginx/${name}.access.log;
+    error_log /var/log/nginx/${name}.error.log;
+}
+EOF
+
+  # Aktifkan site
+  ln -sf /etc/nginx/sites-available/${domain} /etc/nginx/sites-enabled/
+}
+
+# Membuat konfigurasi untuk tiap worker
+setup_worker "galadriel" 8004
+setup_worker "celeborn" 8005
+setup_worker "oropher" 8006
+
+# Mengecek konfigurasi nginx
+echo ""
+echo "[+] Mengecek konfigurasi nginx..."
+nginx -t
+
+# Reload nginx jika tidak ada error
+if [ $? -eq 0 ]; then
+  echo "[+] Reload nginx..."
+  service nginx reload || systemctl reload nginx
+  echo "✅ Semua taman Peri telah dikonfigurasi dengan benar!"
+else
+  echo "❌ Terdapat kesalahan pada konfigurasi nginx. Periksa output di atas."
+  exit 1
+fi
+
+echo ""
+echo "=============================================="
+echo "   ✨ SEMUA TAMAN PERI SIAP DIAKSES ✨"
+echo "=============================================="
+echo "Untuk menguji:"
+echo "  echo '127.0.0.1 galadriel.k02.com celeborn.k02.com oropher.k02.com' >> /etc/hosts"
+echo "  curl galadriel.k02.com:8004"
+echo "  curl celeborn.k02.com:8005"
+echo "  curl oropher.k02.com:8006"
+```
+## COBA Di galadriel, celeborn, oropher
+```
+nano soal12.sh
+```
+## Jalankan 
+```
+bash soal13.sh
+```
+
+## UJI COBA 
+```
+  curl galadriel.k02.com:8004
+  curl celeborn.k02.com:8005
+  curl oropher.k02.com:8006
+```
+
+<img width="619" height="58" alt="image" src="https://github.com/user-attachments/assets/4211749d-a92e-422f-ba7f-d6439969f83d"/><br>
+<img width="600" height="50" alt="image" src="https://github.com/user-attachments/assets/8883c6c3-34d8-47ad-b75c-ba226114f43d"/><br>
+<img width="619" height="48" alt="image" src="https://github.com/user-attachments/assets/7574c19e-ed5b-4214-8f8f-374150ee3671"/>
 
 
 
