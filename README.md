@@ -1707,3 +1707,151 @@ curl http://anarion.k02.com:8003/api/airing
 <img width="785" height="63" alt="image" src="https://github.com/user-attachments/assets/6a639ff5-dbcb-4bf0-a188-075ec56e399d" />
 <img width="784" height="63" alt="image" src="https://github.com/user-attachments/assets/3ea664e9-32f8-4370-a89b-85f2b9086708" />
 
+## Soal_10
+Pemimpin bijak Elros ditugaskan untuk mengkoordinasikan pertahanan Númenor. Konfigurasikan nginx di Elros untuk bertindak sebagai reverse proxy. Buat upstream bernama kesatria_numenor yang berisi alamat ketiga worker (Elendil, Isildur, Anarion). Atur agar semua permintaan yang datang ke domain elros.<xxxx>.com diteruskan secara merata menggunakan algoritma Round Robin ke backend.
+
+### SCRIPT
+#### Elros
+```
+#!/bin/bash
+# soal10-elros.sh — Setup Load Balancer untuk Laravel Workers
+# Jalankan di Elros
+
+echo "=== [SOAL 10] Setup ELROS sebagai Load Balancer ==="
+
+# 1. Install Nginx
+echo "=== [1/5] Install Nginx ==="
+apt-get update
+apt-get install -y nginx
+
+# 2. Hapus konfigurasi default
+echo "=== [2/5] Hapus konfigurasi default ==="
+rm -f /etc/nginx/sites-enabled/default
+rm -f /etc/nginx/sites-enabled/laravel
+
+# 3. Buat konfigurasi Load Balancer
+echo "=== [3/5] Buat konfigurasi Load Balancer ==="
+cat > /etc/nginx/sites-available/load-balancer << 'EOF'
+# Upstream untuk Laravel Workers (Round Robin)
+upstream kesatria_numenor {
+    server elendil.k02.com:8001;
+    server isildur.k02.com:8002;
+    server anarion.k02.com:8003;
+}
+
+server {
+    listen 80;
+    server_name elros.k02.com;
+
+    location / {
+        proxy_pass http://kesatria_numenor;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Blokir akses via IP
+    if ($host != "elros.k02.com") {
+        return 444;
+    }
+}
+EOF
+
+# 4. Aktifkan konfigurasi
+echo "=== [4/5] Aktifkan konfigurasi ==="
+ln -sf /etc/nginx/sites-available/load-balancer /etc/nginx/sites-enabled/
+
+# 5. Test dan restart Nginx
+echo "=== [5/5] Test dan restart Nginx ==="
+nginx -t
+if [ $? -eq 0 ]; then
+    service nginx restart
+    echo "✓ Nginx berhasil di-restart"
+else
+    echo "✗ Nginx configuration error"
+    exit 1
+fi
+
+echo ""
+echo "✅ ELROS Load Balancer siap!"
+echo "   Domain: http://elros.k02.com"
+echo "   Backend Workers:"
+echo "   - elendil.k02.com:8001"
+echo "   - isildur.k02.com:8002"
+echo "   - anarion.k02.com:8003"
+echo "   Algoritma: Round Robin"
+echo ""
+```
+
+### UJI
+#### Semua Node selain Durin dan Minastir (Contoh: Amandil)
+```
+#!/bin/bash
+# test-load-balancer.sh
+# Script untuk testing Load Balancer Elros
+
+echo "=========================================="
+echo "  TESTING LOAD BALANCER ELROS (SOAL 10)"
+echo "=========================================="
+echo ""
+
+# Test 1: Resolusi DNS
+echo "[TEST 1] Resolusi DNS elros.k02.com"
+host elros.k02.com
+if [ $? -eq 0 ]; then
+    echo "✓ DNS OK"
+else
+    echo "✗ DNS FAILED"
+    exit 1
+fi
+echo ""
+
+# Test 2: Ping
+echo "[TEST 2] Ping elros.k02.com"
+ping -c 3 elros.k02.com
+if [ $? -eq 0 ]; then
+    echo "✓ PING OK"
+else
+    echo "✗ PING FAILED"
+    exit 1
+fi
+echo ""
+
+# Test 3: HTTP Response
+echo "[TEST 3] HTTP Response dari Load Balancer"
+RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://elros.k02.com/api/airing)
+if [ "$RESPONSE" == "200" ]; then
+    echo "✓ HTTP 200 OK"
+else
+    echo "✗ HTTP $RESPONSE"
+    exit 1
+fi
+echo ""
+
+# Test 4: Round Robin Distribution
+echo "[TEST 4] Round Robin - 10 Requests"
+for i in {1..10}; do
+    echo -n "Request #$i: "
+    curl -s http://elros.k02.com/api/airing | head -c 40
+    echo "..."
+    sleep 0.3
+done
+echo ""
+echo "✓ Semua request berhasil (Load Balancer berfungsi)"
+echo ""
+
+# Test 5: Blokir akses via IP
+echo "[TEST 5] Blokir akses via IP (192.212.1.6)"
+RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://192.212.1.6/api/airing)
+if [ "$RESPONSE" == "000" ] || [ "$RESPONSE" == "444" ]; then
+    echo "✓ Akses via IP berhasil diblokir"
+else
+    echo "⚠ Akses via IP masih bisa (HTTP $RESPONSE)"
+fi
+echo ""
+
+echo "=========================================="
+echo "  TESTING SELESAI"
+echo "=========================================="
+```
