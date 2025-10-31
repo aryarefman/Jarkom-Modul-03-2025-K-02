@@ -1859,59 +1859,55 @@ echo "=========================================="
 ## Soal_12
 Para Penguasa Peri (Galadriel, Celeborn, Oropher) membangun taman digital mereka menggunakan PHP. Instal nginx dan php8.4-fpm di setiap node worker PHP. Buat file index.php sederhana di /var/www/html masing-masing yang menampilkan nama hostname mereka. Buat agar akses web hanya bisa melalui domain nama, tidak bisa melalui ip.
 
-## Galadriel,Celeborn,Oropher
-## 1. Install Nginx dan PHP 8.4-FPM
+## SCRIPT SOAL 12 
 ```
-apt update
-apt install nginx php8.4-fpm -y
-```
-## 2. Cek dan jalankan manual
-```
-systemctl enable nginx php8.4-fpm
-systemctl start nginx php8.4-fpm
-```
-Jika muncul 
-```
-System has not been booted with systemd as init system (PID 1). Can't operate.
-```
-Jalankan 
-```
+#!/bin/bash
+# =============================================
+# Soal 12 - Para Penguasa Peri (Galadriel, Celeborn, Oropher)
+# Setup Nginx + PHP 8.4-FPM dan Virtual Host
+# =============================================
+
+# Pastikan user memasukkan hostname (misal galadriel, celeborn, oropher)
+if [ $# -ne 1 ]; then
+  echo "Usage: bash $0 <hostname>"
+  echo "Contoh: bash $0 galadriel"
+  exit 1
+fi
+
+HOSTNAME=$1
+
+echo "=== [1/6] Mengupdate & menginstal Nginx dan PHP 8.4-FPM ==="
+apt update -y
+apt install -y nginx php8.4-fpm
+
+echo "=== [2/6] Menjalankan service nginx & php-fpm ==="
 service nginx start
 service php8.4-fpm start
-```
-```
-ps aux | grep nginx
-ps aux | grep php-fpm
-```
-## 3. Buat file web sederhana
-```
-echo "<?php echo 'Halo, saya Galadriel 🌸'; ?>" > /var/www/html/index.php
-```
-```
+
+echo "=== [3/6] Membuat file index.php dengan nama hostname ==="
+mkdir -p /var/www/html
+echo "<?php echo 'Halo, saya ${HOSTNAME^} 🌸'; ?>" > /var/www/html/index.php
 cat /var/www/html/index.php
-```
-## 4. Buat virtual host
-```
-nano /etc/nginx/sites-available/galadriel.k02.com
-```
-```
+
+echo "=== [4/6] Membuat konfigurasi virtual host untuk ${HOSTNAME}.k02.com ==="
+cat > /etc/nginx/sites-available/${HOSTNAME}.k02.com <<EOF
 server {
     listen 80;
-    server_name galadriel.k02.com;
+    server_name ${HOSTNAME}.k02.com;
 
     root /var/www/html;
     index index.php index.html index.htm;
 
     # Blok akses langsung via IP
-    if ($host ~* ^\d+\.\d+\.\d+\.\d+$) {
+    if (\$host ~* ^\d+\.\d+\.\d+\.\d+$) {
         return 444;
     }
 
     location / {
-        try_files $uri $uri/ =404;
+        try_files \$uri \$uri/ =404;
     }
 
-    location ~ \.php$ {
+    location ~ \.php\$ {
         include snippets/fastcgi-php.conf;
         fastcgi_pass unix:/var/run/php/php8.4-fpm.sock;
     }
@@ -1920,34 +1916,56 @@ server {
         deny all;
     }
 
-    access_log /var/log/nginx/galadriel.access.log;
-    error_log /var/log/nginx/galadriel.error.log;
+    access_log /var/log/nginx/${HOSTNAME}.access.log;
+    error_log /var/log/nginx/${HOSTNAME}.error.log;
 }
-```
+EOF
 
-## 5. Aktifkan situs
-```
-ln -s /etc/nginx/sites-available/galadriel.k02.com /etc/nginx/sites-enabled/
-```
-## Pastikan hanya ada symlink yang valid
-```
-ls -l /etc/nginx/sites-enabled/
-```
-## hapus symlink jika ada yang lain
-```
-rm /etc/nginx/sites-enabled/galadriel.k02.com
-```
-## 6. Tes konfigurasi & reload
-```
-nginx -t
-service nginx reload
-```
-## UJI HASIL 
-Uji di Khamul 
+echo "=== [5/6] Mengaktifkan virtual host ${HOSTNAME}.k02.com ==="
+ln -sf /etc/nginx/sites-available/${HOSTNAME}.k02.com /etc/nginx/sites-enabled/${HOSTNAME}.k02.com
 
+echo "=== [6/6] Mengecek konfigurasi dan reload Nginx ==="
+nginx -t && service nginx reload
+
+echo "=== Setup selesai! ==="
+echo "Sekarang kamu bisa mengakses:"
+echo "  http://${HOSTNAME}.k02.com"
+echo ""
+echo "Pastikan domain tersebut diarahkan ke IP node ini (via /etc/hosts)."
+echo "Contoh:"
+echo "  echo '127.0.0.1 ${HOSTNAME}.k02.com' >> /etc/hosts"
+echo ""
+echo "Tes akses:"
+echo "  curl http://${HOSTNAME}.k02.com"
+```
+## COBA DI galadriel, celeborn, oropher
+```
+nano soal12.sh
+```
+Beri Izin Eksekusi:
+
+```
+chmod +x soal12.sh
+```
+## Jalankan untuk masing-masing node:
+```
+bash soal12.sh galadriel
+bash soal12.sh celeborn
+bash soal12.sh oropher
+```
+## UJI COBA 
 ```
 curl galadriel.k02.com
+curl celeborn.k02.com
+curl oropher.k02.com
 ```
 
-<img width="386" height="64" alt="image" src="https://github.com/user-attachments/assets/54df0945-3aeb-430b-9129-e640e67e0707" />
+<img width="400" height="47" alt="image" src="https://github.com/user-attachments/assets/97f7d335-fe19-47b8-9b5b-411cfada5468" />
+
+<img width="438" height="42" alt="image" src="https://github.com/user-attachments/assets/80528db6-aa71-47ec-852e-e787c2975a0c" />
+
+<img width="409" height="42" alt="image" src="https://github.com/user-attachments/assets/966b92c6-ff56-45c9-bd29-afea4c320c25" />
+
+
+
 
