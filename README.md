@@ -1297,8 +1297,6 @@ lynx http://192.212.1.3   # Isildur
 lynx http://192.212.1.4  # Anarion
 ```
 <img width="1365" height="711" alt="image" src="https://github.com/user-attachments/assets/9112ab75-4c7e-482b-a9db-4312469402b1" />
-<img width="1365" height="717" alt="image" src="https://github.com/user-attachments/assets/552a566e-07fe-4e64-8fd3-bc4fc8ea3c8e" />
-<img width="1365" height="721" alt="image" src="https://github.com/user-attachments/assets/5370783c-e326-4ee9-a1d6-0aa8501546fd" />
 
 ## Soal_8
 Setiap benteng Númenor harus terhubung ke sumber pengetahuan, Palantir. Konfigurasikan koneksi database di file .env masing-masing worker. Setiap benteng juga harus memiliki gerbang masuk yang unik; atur nginx agar Elendil mendengarkan di port 8001, Isildur di 8002, dan Anarion di 8003. Jangan lupa jalankan migrasi dan seeding awal dari Elendil. Buat agar akses web hanya bisa melalui domain nama, tidak bisa melalui ip.
@@ -1401,19 +1399,50 @@ echo "DB_PASSWORD=laravel_password"
 
 echo "=== [SOAL 8] Setup ELENDIL → port 8001 ==="
 
-# 1. Update .env
+# 1. Install PHP MySQL Driver
+echo "Installing PHP MySQL extension..."
+apt-get update
+apt-get install -y php8.2-mysql
+
+# 2. Update .env
 cd /var/www/resource-laravel-k1
 sed -i 's/DB_HOST=.*/DB_HOST=palantir.k02.com/' .env
 sed -i 's/DB_DATABASE=.*/DB_DATABASE=laravel_db/' .env
 sed -i 's/DB_USERNAME=.*/DB_USERNAME=laravel_user/' .env
 sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=laravel_password/' .env
-echo "Updated .env → palantir.k02.com"
+echo "✓ Updated .env → palantir.k02.com"
 
-# 2. Hapus config lama
+# 3. Update routes/api.php ke versi Controller-based
+cat > routes/api.php << 'APIEOF'
+<?php
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AiringController;
+
+Route::get('/user', function (Request $request) {
+    return $request->user();
+})->middleware('auth:sanctum');
+
+Route::group(['prefix' => 'airing'], function () {
+   Route::get('/', [AiringController::class, 'index']);
+   Route::get('/{id}', [AiringController::class, 'show']);
+   Route::post('/', [AiringController::class, 'store']);
+});
+APIEOF
+echo "✓ Updated routes/api.php"
+
+# 4. Clear Laravel cache
+php artisan config:clear
+php artisan route:clear
+php artisan cache:clear
+echo "✓ Cache cleared"
+
+# 5. Hapus config lama
 rm -f /etc/nginx/sites-enabled/laravel
 rm -f /etc/nginx/sites-enabled/default
 
-# 3. Buat config Nginx
+# 6. Buat config Nginx
 cat > /etc/nginx/sites-available/laravel << 'EOF'
 server {
     listen 8001;
@@ -1438,14 +1467,22 @@ server {
 }
 EOF
 
-# 4. Aktifkan site
+# 7. Aktifkan site
 ln -sf /etc/nginx/sites-available/laravel /etc/nginx/sites-enabled/
 
-# 5. Restart Nginx
+# 8. Restart services
+service php8.2-fpm restart
 nginx -t && service nginx restart
 
 echo ""
-echo "ELENDIL SIAP → http://elendil.k02.com:8001"
+echo "=== Testing Setup ==="
+php -r "new PDO('mysql:host=palantir.k02.com;dbname=laravel_db', 'laravel_user', 'laravel_password');" && echo "✓ Database connection OK"
+echo ""
+echo "✓✓✓ ELENDIL SIAP → http://elendil.k02.com:8001"
+echo "Testing API endpoint..."
+sleep 2
+curl -s http://localhost:8001/api/airing
+echo ""
 ```
 
 #### Isildur
@@ -1456,19 +1493,50 @@ echo "ELENDIL SIAP → http://elendil.k02.com:8001"
 
 echo "=== [SOAL 8] Setup ISILDUR → port 8002 ==="
 
-# 1. Update .env
+# 1. Install PHP MySQL Driver
+echo "Installing PHP MySQL extension..."
+apt-get update
+apt-get install -y php8.2-mysql
+
+# 2. Update .env
 cd /var/www/resource-laravel-k1
 sed -i 's/DB_HOST=.*/DB_HOST=palantir.k02.com/' .env
 sed -i 's/DB_DATABASE=.*/DB_DATABASE=laravel_db/' .env
 sed -i 's/DB_USERNAME=.*/DB_USERNAME=laravel_user/' .env
 sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=laravel_password/' .env
-echo "Updated .env → palantir.k02.com"
+echo "✓ Updated .env → palantir.k02.com"
 
-# 2. Hapus config lama
+# 3. Update routes/api.php ke versi Controller-based (sudah ada, tapi pastikan)
+cat > routes/api.php << 'APIEOF'
+<?php
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AiringController;
+
+Route::get('/user', function (Request $request) {
+    return $request->user();
+})->middleware('auth:sanctum');
+
+Route::group(['prefix' => 'airing'], function () {
+   Route::get('/', [AiringController::class, 'index']);
+   Route::get('/{id}', [AiringController::class, 'show']);
+   Route::post('/', [AiringController::class, 'store']);
+});
+APIEOF
+echo "✓ Updated routes/api.php"
+
+# 4. Clear Laravel cache
+php artisan config:clear
+php artisan route:clear
+php artisan cache:clear
+echo "✓ Cache cleared"
+
+# 5. Hapus config lama
 rm -f /etc/nginx/sites-enabled/laravel
 rm -f /etc/nginx/sites-enabled/default
 
-# 3. Buat config Nginx
+# 6. Buat config Nginx
 cat > /etc/nginx/sites-available/laravel << 'EOF'
 server {
     listen 8002;
@@ -1493,14 +1561,22 @@ server {
 }
 EOF
 
-# 4. Aktifkan site
+# 7. Aktifkan site
 ln -sf /etc/nginx/sites-available/laravel /etc/nginx/sites-enabled/
 
-# 5. Restart Nginx
+# 8. Restart services
+service php8.2-fpm restart
 nginx -t && service nginx restart
 
 echo ""
-echo "ISILDUR SIAP → http://isildur.k02.com:8002"
+echo "=== Testing Setup ==="
+php -r "new PDO('mysql:host=palantir.k02.com;dbname=laravel_db', 'laravel_user', 'laravel_password');" && echo "✓ Database connection OK"
+echo ""
+echo "✓✓✓ ISILDUR SIAP → http://isildur.k02.com:8002"
+echo "Testing API endpoint..."
+sleep 2
+curl -s http://localhost:8002/api/airing
+echo ""
 ```
 
 #### Anarion
@@ -1511,19 +1587,50 @@ echo "ISILDUR SIAP → http://isildur.k02.com:8002"
 
 echo "=== [SOAL 8] Setup ANARION → port 8003 ==="
 
-# 1. Update .env
+# 1. Install PHP MySQL Driver
+echo "Installing PHP MySQL extension..."
+apt-get update
+apt-get install -y php8.2-mysql
+
+# 2. Update .env
 cd /var/www/resource-laravel-k1
 sed -i 's/DB_HOST=.*/DB_HOST=palantir.k02.com/' .env
 sed -i 's/DB_DATABASE=.*/DB_DATABASE=laravel_db/' .env
 sed -i 's/DB_USERNAME=.*/DB_USERNAME=laravel_user/' .env
 sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=laravel_password/' .env
-echo "Updated .env → palantir.k02.com"
+echo "✓ Updated .env → palantir.k02.com"
 
-# 2. Hapus config lama
+# 3. Update routes/api.php ke versi Controller-based
+cat > routes/api.php << 'APIEOF'
+<?php
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AiringController;
+
+Route::get('/user', function (Request $request) {
+    return $request->user();
+})->middleware('auth:sanctum');
+
+Route::group(['prefix' => 'airing'], function () {
+   Route::get('/', [AiringController::class, 'index']);
+   Route::get('/{id}', [AiringController::class, 'show']);
+   Route::post('/', [AiringController::class, 'store']);
+});
+APIEOF
+echo "✓ Updated routes/api.php"
+
+# 4. Clear Laravel cache
+php artisan config:clear
+php artisan route:clear
+php artisan cache:clear
+echo "✓ Cache cleared"
+
+# 5. Hapus config lama
 rm -f /etc/nginx/sites-enabled/laravel
 rm -f /etc/nginx/sites-enabled/default
 
-# 3. Buat config Nginx
+# 6. Buat config Nginx
 cat > /etc/nginx/sites-available/laravel << 'EOF'
 server {
     listen 8003;
@@ -1548,24 +1655,22 @@ server {
 }
 EOF
 
-# 4. Aktifkan site
+# 7. Aktifkan site
 ln -sf /etc/nginx/sites-available/laravel /etc/nginx/sites-enabled/
 
-# 5. Restart Nginx
+# 8. Restart services
+service php8.2-fpm restart
 nginx -t && service nginx restart
 
 echo ""
-echo "ANARION SIAP → http://anarion.k02.com:8003"
-```
-
-### UJI
-#### Semua Node selain Durin dan Minastir (Contoh: Amandil)
-```
-apt-get update
-apt-get install -y lynx
-lynx http://elendil.k02.com:8001
-lynx http://isildur.k02.com:8002
-lynx http://anarion.k02.com:8003
+echo "=== Testing Setup ==="
+php -r "new PDO('mysql:host=palantir.k02.com;dbname=laravel_db', 'laravel_user', 'laravel_password');" && echo "✓ Database connection OK"
+echo ""
+echo "✓✓✓ ANARION SIAP → http://anarion.k02.com:8003"
+echo "Testing API endpoint..."
+sleep 2
+curl -s http://localhost:8003/api/airing
+echo ""
 ```
 
 #### Laravel Workers (Elendil, Isildur, Anarion)
@@ -1580,3 +1685,25 @@ mysql -u laravel_user -p'laravel_password' -h palantir.k02.com -e "SHOW DATABASE
 
 ## Soal_9
 Setiap benteng Númenor harus terhubung ke sumber pengetahuan, Palantir. Konfigurasikan koneksi database di file .env masing-masing worker. Setiap benteng juga harus memiliki gerbang masuk yang unik; atur nginx agar Pastikan setiap benteng berfungsi secara mandiri. Dari dalam node client masing-masing, gunakan lynx untuk melihat halaman utama Laravel dan curl /api/airing untuk memastikan mereka bisa mengambil data dari Palantir.
+
+### UJI
+#### Semua Node selain Durin dan Minastir (Contoh: Amandil)
+```
+apt-get update
+apt-get install -y lynx
+lynx http://elendil.k02.com:8001
+lynx http://isildur.k02.com:8002
+lynx http://anarion.k02.com:8003
+```
+<img width="1919" height="1199" alt="image" src="https://github.com/user-attachments/assets/06b41a5e-2357-4397-8c91-a4cf10b2fa3d" />
+
+#### Semua Node selain Durin dan Minastir (Contoh: Amandil)
+```
+curl http://elendil.k02.com:8001/api/airing
+curl http://isildur.k02.com:8002/api/airing
+curl http://anarion.k02.com:8003/api/airing
+```
+<img width="785" height="63" alt="image" src="https://github.com/user-attachments/assets/eea43e0d-c163-4e8a-969f-531563a569b1" />
+<img width="785" height="63" alt="image" src="https://github.com/user-attachments/assets/6a639ff5-dbcb-4bf0-a188-075ec56e399d" />
+<img width="784" height="63" alt="image" src="https://github.com/user-attachments/assets/3ea664e9-32f8-4370-a89b-85f2b9086708" />
+
