@@ -1167,174 +1167,124 @@ Para Ksatria Númenor (Elendil, Isildur, Anarion) mulai membangun benteng pertah
 #### Laravel Workers (Elendil, Isildur, Anarion)
 ```
 #!/bin/bash
-# === [SETUP LARAVEL WORKER - FIX PHP 8.4 COMPATIBILITY] ===
 
-echo "=== [1/8] Update & Install Dependencies ==="
-echo "nameserver 192.168.122.1" > /etc/resolv.conf
-apt update -y
-apt install -y lsb-release apt-transport-https ca-certificates wget curl git
+# Script instalasi Laravel dengan Nginx dan PHP 8.2
+# Usage: bash soal7.sh
 
-echo "=== [2/8] Add PHP 8.4 Repository (Sury) ==="
-wget -O /etc/apt/trusted.gpg.d/php.gpg https://packages.sury.org/php/apt.gpg
-echo "deb https://packages.sury.org/php/ $(lsb_release -sc) main" | tee /etc/apt/sources.list.d/php.list
-apt update -y
+set -e  # Exit on error
 
-echo "=== [3/8] Install PHP 8.4 & Extensions ==="
-apt install -y php8.4 php8.4-fpm php8.4-cli php8.4-common \
-    php8.4-mbstring php8.4-xml php8.4-mysql php8.4-curl \
-    php8.4-intl php8.4-opcache php8.4-readline \
-    php8.4-zip php8.4-gd unzip
+echo "=== Memulai instalasi Laravel ==="
 
-php --version
+# Update sources.list
+echo "=== Mengupdate sources.list ==="
+cat > /etc/apt/sources.list << 'EOF'
+deb http://deb.debian.org/debian bookworm main contrib non-free
+deb http://security.debian.org/debian-security bookworm-security main contrib non-free
+deb http://deb.debian.org/debian bookworm-updates main contrib non-free
+EOF
 
-echo "=== [4/8] Install Nginx ==="
-apt install -y nginx
+# Update package list
+echo "=== Updating package list ==="
+apt-get update
 
-echo "=== [5/8] Install Composer 2 ==="
-wget https://getcomposer.org/download/2.0.13/composer.phar
-chmod +x composer.phar
-mv composer.phar /usr/bin/composer
-composer -V
+# Install dependencies
+echo "=== Installing dependencies ==="
+apt-get install -y software-properties-common
+apt-get install -y lsb-release ca-certificates apt-transport-https gnupg2 curl git unzip
 
-echo "=== [6/8] Clone Laravel Project ==="
+# Add PHP repository
+echo "=== Adding PHP repository ==="
+curl -sSL https://packages.sury.org/php/README.txt | bash -x
+
+# Install PHP 8.2 and extensions
+echo "=== Installing PHP 8.2 ==="
+apt install -y php8.2 php8.2-fpm php8.2-cli php8.2-common php8.2-curl php8.2-mbstring php8.2-xml php8.2-zip php8.2-bcmath php8.2-gd unzip git
+
+# Install Nginx
+echo "=== Installing Nginx ==="
+apt-get install -y nginx
+service nginx start
+ps aux | grep nginx
+
+# Install Composer
+echo "=== Installing Composer ==="
+curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+composer --version
+
+# Clone Laravel project
+echo "=== Cloning Laravel project ==="
 cd /var/www
-git clone https://github.com/elshiraphine/laravel-simple-rest-api.git
-cd laravel-simple-rest-api
+git clone https://github.com/elshiraphine/laravel-simple-rest-api.git resource-laravel-k1
+cd resource-laravel-k1
 
-echo "=== [7/8] Install Laravel Dependencies with Update ==="
-# Hapus composer.lock untuk force update ke versi compatible
-rm -f composer.lock
+# Install dependencies
+echo "=== Installing Laravel dependencies ==="
+composer install
+composer update
 
-# Update composer.json untuk require PHP 8.4
-composer config platform.php 8.4.14
-
-# Install dengan update dependencies
-composer update --no-interaction --prefer-dist
-
-# Copy .env file
+# Setup environment
+echo "=== Setting up environment ==="
 cp .env.example .env
-
-# Generate application key
 php artisan key:generate
 
-echo "=== [8/8] Set Permissions ==="
-chown -R www-data:www-data /var/www/laravel-simple-rest-api/storage
-chown -R www-data:www-data /var/www/laravel-simple-rest-api/bootstrap/cache
-chmod -R 775 /var/www/laravel-simple-rest-api/storage
-chmod -R 775 /var/www/laravel-simple-rest-api/bootstrap/cache
+# Verify installation
+ls -la /var/www/resource-laravel-k1/
+cat /var/www/resource-laravel-k1/.env
+ls /var/www/resource-laravel-k1/vendor/
+php artisan --version
 
-echo ""
-echo "✅ Laravel Worker setup selesai!"
-echo "Lokasi project: /var/www/laravel-simple-rest-api"
-echo ""
-```
-
-#### Elendil
-```
+# Configure Nginx
+echo "=== Configuring Nginx ==="
 cat > /etc/nginx/sites-available/laravel << 'EOF'
 server {
-    listen 8001;
-
-    root /var/www/laravel-simple-rest-api/public;
-    index index.php index.html index.htm;
-    server_name _;
-
+    listen 80;
+    server_name localhost;
+    root /var/www/resource-laravel-k1/public;
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header X-Content-Type-Options "nosniff";
+    index index.php;
+    charset utf-8;
     location / {
         try_files $uri $uri/ /index.php?$query_string;
     }
-
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; }
+    error_page 404 /index.php;
     location ~ \.php$ {
         include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/var/run/php/php8.4-fpm.sock;
+        fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
     }
-
-    location ~ /\.ht {
+    location ~ /\.(?!well-known).* {
         deny all;
     }
-
-    error_log /var/log/nginx/laravel_error.log;
-    access_log /var/log/nginx/laravel_access.log;
 }
 EOF
 
-# Buat symlink
+# Enable site
+echo "=== Enabling Laravel site ==="
 ln -s /etc/nginx/sites-available/laravel /etc/nginx/sites-enabled/
+rm -f /etc/nginx/sites-enabled/default
+
+# Set permissions
+echo "=== Setting permissions ==="
+cd /var/www/resource-laravel-k1
+chmod -R 775 storage bootstrap/cache
+chown -R www-data:www-data storage bootstrap/cache
 
 # Start services
-service php8.4-fpm start
+echo "=== Starting PHP-FPM ==="
+service php8.2-fpm start
+ls /run/php/
+
+# Test and restart Nginx
+echo "=== Testing and restarting Nginx ==="
+nginx -t
 service nginx restart
-```
 
-#### Isildur
-```
-cat > /etc/nginx/sites-available/laravel << 'EOF'
-server {
-    listen 8002;
-
-    root /var/www/laravel-simple-rest-api/public;
-    index index.php index.html index.htm;
-    server_name _;
-
-    location / {
-        try_files $uri $uri/ /index.php?$query_string;
-    }
-
-    location ~ \.php$ {
-        include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/var/run/php/php8.4-fpm.sock;
-    }
-
-    location ~ /\.ht {
-        deny all;
-    }
-
-    error_log /var/log/nginx/laravel_error.log;
-    access_log /var/log/nginx/laravel_access.log;
-}
-EOF
-
-# Buat symlink
-ln -s /etc/nginx/sites-available/laravel /etc/nginx/sites-enabled/
-
-# Start services
-service php8.4-fpm start
-service nginx restart
-```
-
-#### Anarion
-```
-cat > /etc/nginx/sites-available/laravel << 'EOF'
-server {
-    listen 8003;
-
-    root /var/www/laravel-simple-rest-api/public;
-    index index.php index.html index.htm;
-    server_name _;
-
-    location / {
-        try_files $uri $uri/ /index.php?$query_string;
-    }
-
-    location ~ \.php$ {
-        include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/var/run/php/php8.4-fpm.sock;
-    }
-
-    location ~ /\.ht {
-        deny all;
-    }
-
-    error_log /var/log/nginx/laravel_error.log;
-    access_log /var/log/nginx/laravel_access.log;
-}
-EOF
-
-# Buat symlink
-ln -s /etc/nginx/sites-available/laravel /etc/nginx/sites-enabled/
-
-# Start services
-service php8.4-fpm start
-service nginx restart
+echo "=== Instalasi selesai! ==="
+echo "Laravel dapat diakses di: http://localhost"
 ```
 
 ### UJI
