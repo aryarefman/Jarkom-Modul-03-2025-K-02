@@ -1300,4 +1300,283 @@ lynx http://192.212.1.4  # Anarion
 <img width="1365" height="717" alt="image" src="https://github.com/user-attachments/assets/552a566e-07fe-4e64-8fd3-bc4fc8ea3c8e" />
 <img width="1365" height="721" alt="image" src="https://github.com/user-attachments/assets/5370783c-e326-4ee9-a1d6-0aa8501546fd" />
 
+## Soal_8
+Setiap benteng Númenor harus terhubung ke sumber pengetahuan, Palantir. Konfigurasikan koneksi database di file .env masing-masing worker. Setiap benteng juga harus memiliki gerbang masuk yang unik; atur nginx agar Elendil mendengarkan di port 8001, Isildur di 8002, dan Anarion di 8003. Jangan lupa jalankan migrasi dan seeding awal dari Elendil. Buat agar akses web hanya bisa melalui domain nama, tidak bisa melalui ip.
 
+### SCRIPT
+#### Palantir
+```
+#!/bin/bash
+# setup-palantir.sh — FINAL VERSION (NO SUDO!)
+# Kelompok K-02 | Jarkom Modul 3
+
+set -e
+
+echo "=== [PALANTIR] Setup Database Server (NO SUDO) ==="
+
+# === 1. Install MariaDB ===
+echo "=== [1] Install MariaDB ==="
+apt update -qq
+apt install -y mariadb-server mariadb-client > /dev/null 2>&1
+
+# === 2. Direktori runtime ===
+echo "=== [2] Buat /run/mysqld ==="
+mkdir -p /run/mysqld
+chown mysql:mysql /run/mysqld
+chmod 755 /run/mysqld
+
+# === 3. Bind to all interfaces ===
+echo "=== [3] bind-address = 0.0.0.0 ==="
+cat > /etc/mysql/mariadb.conf.d/50-server.cnf << 'EOF'
+[mysqld]
+bind-address = 0.0.0.0
+skip-networking = 0
+EOF
+
+# === 4. Inisialisasi datadir ===
+if [ ! -d /var/lib/mysql/mysql ]; then
+    echo "=== [4] Inisialisasi datadir ==="
+    mysql_install_db --user=mysql --datadir=/var/lib/mysql > /dev/null
+fi
+
+# === 5. Stop proses lama ===
+echo "=== [5] Stop proses lama ==="
+pkill mariadbd 2>/dev/null || true
+pkill mysqld_safe 2>/dev/null || true
+sleep 3
+
+# === 6. Start MariaDB ===
+echo "=== [6] Start MariaDB ==="
+/usr/bin/mysqld_safe --user=mysql --skip-grant-tables --skip-networking &
+sleep 8
+
+# === 7. Akses root VIA unix_socket (LANGSUNG mysql) ===
+echo "=== [7] Setup DB & User ==="
+mysql << 'EOF'
+FLUSH PRIVILEGES;
+ALTER USER 'root'@'localhost' IDENTIFIED BY 'rootpass';
+CREATE DATABASE IF NOT EXISTS laravel_db;
+CREATE USER IF NOT EXISTS 'laravel_user'@'%' IDENTIFIED BY 'laravel_password';
+GRANT ALL PRIVILEGES ON laravel_db.* TO 'laravel_user'@'%';
+FLUSH PRIVILEGES;
+EOF
+
+# === 8. Restart normal ===
+echo "=== [8] Restart normal ==="
+pkill mariadbd 2>/dev/null || true
+pkill mysqld_safe 2>/dev/null || true
+sleep 3
+/usr/bin/mysqld_safe --user=mysql > /var/log/mysql.log 2>&1 &
+sleep 8
+
+# === 9. Test koneksi ===
+echo "=== [9] Test koneksi ==="
+if mysql -u laravel_user -p'laravel_password' -h 127.0.0.1 laravel_db -e "SELECT 'DB OK';" | grep -q "DB OK"; then
+    echo "KONEKSI BERHASIL"
+else
+    echo "KONEKSI GAGAL"
+    exit 1
+fi
+
+# === 10. Info ===
+echo ""
+echo "PALANTIR SIAP!"
+echo "Host: $(hostname -I | awk '{print $1}')"
+echo "DB: laravel_db"
+echo "User: laravel_user"
+echo "Pass: laravel_password"
+echo ""
+echo "Gunakan di .env worker:"
+echo "DB_HOST=palantir.k02.com"
+echo "DB_DATABASE=laravel_db"
+echo "DB_USERNAME=laravel_user"
+echo "DB_PASSWORD=laravel_password"
+```
+
+#### Elendil
+```
+#!/bin/bash
+# soal8-elendil.sh — Setup Elendil (Port 8001)
+# Jalankan di Elendil
+
+echo "=== [SOAL 8] Setup ELENDIL → port 8001 ==="
+
+# 1. Update .env
+cd /var/www/resource-laravel-k1
+sed -i 's/DB_HOST=.*/DB_HOST=palantir.k02.com/' .env
+sed -i 's/DB_DATABASE=.*/DB_DATABASE=laravel_db/' .env
+sed -i 's/DB_USERNAME=.*/DB_USERNAME=laravel_user/' .env
+sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=laravel_password/' .env
+echo "Updated .env → palantir.k02.com"
+
+# 2. Hapus config lama
+rm -f /etc/nginx/sites-enabled/laravel
+rm -f /etc/nginx/sites-enabled/default
+
+# 3. Buat config Nginx
+cat > /etc/nginx/sites-available/laravel << 'EOF'
+server {
+    listen 8001;
+    server_name elendil.k02.com;
+
+    root /var/www/resource-laravel-k1/public;
+    index index.php;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+    }
+
+    # BLOKIR AKSES VIA IP
+    if ($host != "elendil.k02.com") {
+        return 444;
+    }
+}
+EOF
+
+# 4. Aktifkan site
+ln -sf /etc/nginx/sites-available/laravel /etc/nginx/sites-enabled/
+
+# 5. Restart Nginx
+nginx -t && service nginx restart
+
+echo ""
+echo "ELENDIL SIAP → http://elendil.k02.com:8001"
+```
+
+#### Isildur
+```
+#!/bin/bash
+# soal8-isildur.sh — Setup Isildur (Port 8002)
+# Jalankan di Isildur
+
+echo "=== [SOAL 8] Setup ISILDUR → port 8002 ==="
+
+# 1. Update .env
+cd /var/www/resource-laravel-k1
+sed -i 's/DB_HOST=.*/DB_HOST=palantir.k02.com/' .env
+sed -i 's/DB_DATABASE=.*/DB_DATABASE=laravel_db/' .env
+sed -i 's/DB_USERNAME=.*/DB_USERNAME=laravel_user/' .env
+sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=laravel_password/' .env
+echo "Updated .env → palantir.k02.com"
+
+# 2. Hapus config lama
+rm -f /etc/nginx/sites-enabled/laravel
+rm -f /etc/nginx/sites-enabled/default
+
+# 3. Buat config Nginx
+cat > /etc/nginx/sites-available/laravel << 'EOF'
+server {
+    listen 8002;
+    server_name isildur.k02.com;
+
+    root /var/www/resource-laravel-k1/public;
+    index index.php;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+    }
+
+    # BLOKIR AKSES VIA IP
+    if ($host != "isildur.k02.com") {
+        return 444;
+    }
+}
+EOF
+
+# 4. Aktifkan site
+ln -sf /etc/nginx/sites-available/laravel /etc/nginx/sites-enabled/
+
+# 5. Restart Nginx
+nginx -t && service nginx restart
+
+echo ""
+echo "ISILDUR SIAP → http://isildur.k02.com:8002"
+```
+
+#### Anarion
+```
+#!/bin/bash
+# soal8-anarion.sh — Setup Anarion (Port 8003)
+# Jalankan di Anarion
+
+echo "=== [SOAL 8] Setup ANARION → port 8003 ==="
+
+# 1. Update .env
+cd /var/www/resource-laravel-k1
+sed -i 's/DB_HOST=.*/DB_HOST=palantir.k02.com/' .env
+sed -i 's/DB_DATABASE=.*/DB_DATABASE=laravel_db/' .env
+sed -i 's/DB_USERNAME=.*/DB_USERNAME=laravel_user/' .env
+sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=laravel_password/' .env
+echo "Updated .env → palantir.k02.com"
+
+# 2. Hapus config lama
+rm -f /etc/nginx/sites-enabled/laravel
+rm -f /etc/nginx/sites-enabled/default
+
+# 3. Buat config Nginx
+cat > /etc/nginx/sites-available/laravel << 'EOF'
+server {
+    listen 8003;
+    server_name anarion.k02.com;
+
+    root /var/www/resource-laravel-k1/public;
+    index index.php;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+    }
+
+    # BLOKIR AKSES VIA IP
+    if ($host != "anarion.k02.com") {
+        return 444;
+    }
+}
+EOF
+
+# 4. Aktifkan site
+ln -sf /etc/nginx/sites-available/laravel /etc/nginx/sites-enabled/
+
+# 5. Restart Nginx
+nginx -t && service nginx restart
+
+echo ""
+echo "ANARION SIAP → http://anarion.k02.com:8003"
+```
+
+### UJI
+#### Semua Node selain Durin dan Minastir (Contoh: Amandil)
+```
+apt-get update
+apt-get install -y lynx
+lynx http://elendil.k02.com:8001
+lynx http://isildur.k02.com:8002
+lynx http://anarion.k02.com:8003
+```
+
+#### Laravel Workers (Elendil, Isildur, Anarion)
+```
+apt-get update
+apt-get install -y mariadb-client
+mysql -u laravel_user -p'laravel_password' -h palantir.k02.com -e "SHOW DATABASES;"
+```
+<img width="1096" height="182" alt="image" src="https://github.com/user-attachments/assets/b175229c-016f-48d6-9343-794c1f7216c5" />
+<img width="1394" height="232" alt="image" src="https://github.com/user-attachments/assets/443ef162-1a8c-41ab-9262-c576fd6421df" />
+<img width="1413" height="230" alt="image" src="https://github.com/user-attachments/assets/3b4ee351-2262-454e-bf19-985725caf28b" />
+
+## Soal_9
+Setiap benteng Númenor harus terhubung ke sumber pengetahuan, Palantir. Konfigurasikan koneksi database di file .env masing-masing worker. Setiap benteng juga harus memiliki gerbang masuk yang unik; atur nginx agar Pastikan setiap benteng berfungsi secara mandiri. Dari dalam node client masing-masing, gunakan lynx untuk melihat halaman utama Laravel dan curl /api/airing untuk memastikan mereka bisa mengambil data dari Palantir.
