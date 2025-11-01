@@ -1953,34 +1953,69 @@ Pemimpin bijak Elros ditugaskan untuk mengkoordinasikan pertahanan Númenor. Kon
 #### Elros
 ```
 #!/bin/bash
-# soal10-elros.sh — Setup Load Balancer untuk Laravel Workers
-# Jalankan di Elros
+# setup-elros-final.sh
+# Setup LENGKAP Load Balancer Elros
+# JALANKAN DI ELROS
 
-echo "=== [SOAL 10] Setup ELROS sebagai Load Balancer ==="
+echo "=========================================="
+echo "  SETUP ELROS - LOAD BALANCER"
+echo "=========================================="
+echo ""
 
-# 1. Install Nginx
-echo "=== [1/5] Install Nginx ==="
+# 1. Update dan install nginx
+echo "[1/5] Install Nginx"
 apt-get update
-apt-get install -y nginx
+apt-get install -y nginx curl dnsutils
 
-# 2. Hapus konfigurasi default
-echo "=== [2/5] Hapus konfigurasi default ==="
+# 2. Setup direktori log
+echo "[2/5] Setup Direktori Log"
+mkdir -p /var/log/nginx/
+chmod 755 /var/log/nginx/
+
+# 3. Backup konfigurasi lama
+echo "[3/5] Backup Konfigurasi Lama"
+cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.backup 2>/dev/null
+
+# 4. Buat konfigurasi upstream dan load balancer
+echo "[4/5] Buat Konfigurasi Load Balancer"
+
+# Hapus konfigurasi default
 rm -f /etc/nginx/sites-enabled/default
-rm -f /etc/nginx/sites-enabled/laravel
 
-# 3. Buat konfigurasi Load Balancer
-echo "=== [3/5] Buat konfigurasi Load Balancer ==="
-cat > /etc/nginx/sites-available/load-balancer << 'EOF'
-# Upstream untuk Laravel Workers (Round Robin)
+# Buat konfigurasi baru
+cat > /etc/nginx/sites-available/elros-lb << 'ELROS_CONFIG'
+# Upstream definition untuk Round Robin
 upstream kesatria_numenor {
     server elendil.k02.com:8001;
     server isildur.k02.com:8002;
     server anarion.k02.com:8003;
 }
 
+# Log format untuk tracking upstream
+log_format upstreamlog '$remote_addr - $remote_user [$time_local] '
+                       '"$request" $status $body_bytes_sent '
+                       '"$http_referer" "$http_user_agent" '
+                       'upstream: $upstream_addr';
+
+# Server block - blokir akses via IP
+server {
+    listen 80 default_server;
+    server_name ~^192\.;
+    
+    return 444;
+}
+
+# Server block - handle domain elros.k02.com
 server {
     listen 80;
     server_name elros.k02.com;
+    
+    access_log /var/log/nginx/elros-access.log upstreamlog;
+    error_log /var/log/nginx/elros-error.log;
+
+    # Proxy settings
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
 
     location / {
         proxy_pass http://kesatria_numenor;
@@ -1988,39 +2023,59 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # Blokir akses via IP
-    if ($host != "elros.k02.com") {
-        return 444;
+        
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
     }
 }
-EOF
+ELROS_CONFIG
 
-# 4. Aktifkan konfigurasi
-echo "=== [4/5] Aktifkan konfigurasi ==="
-ln -sf /etc/nginx/sites-available/load-balancer /etc/nginx/sites-enabled/
+# Aktifkan konfigurasi
+ln -sf /etc/nginx/sites-available/elros-lb /etc/nginx/sites-enabled/elros-lb
 
-# 5. Test dan restart Nginx
-echo "=== [5/5] Test dan restart Nginx ==="
+echo "✓ Konfigurasi dibuat di /etc/nginx/sites-available/elros-lb"
+
+# 5. Test dan start nginx
+echo "[5/5] Test dan Start Nginx"
 nginx -t
 if [ $? -eq 0 ]; then
-    service nginx restart
-    echo "✓ Nginx berhasil di-restart"
+    service nginx stop 2>/dev/null
+    sleep 1
+    service nginx start
+    sleep 2
+    
+    if ps aux | grep -q "[n]ginx: master"; then
+        echo "✓ Nginx berhasil di-start"
+    else
+        echo "✗ Nginx gagal di-start"
+        exit 1
+    fi
 else
-    echo "✗ Nginx configuration error"
+    echo "✗ Nginx config error"
     exit 1
 fi
 
 echo ""
-echo "✅ ELROS Load Balancer siap!"
-echo "   Domain: http://elros.k02.com"
-echo "   Backend Workers:"
-echo "   - elendil.k02.com:8001"
-echo "   - isildur.k02.com:8002"
-echo "   - anarion.k02.com:8003"
-echo "   Algoritma: Round Robin"
+echo "=========================================="
+echo "  SETUP SELESAI"
+echo "=========================================="
 echo ""
+echo "Elros Load Balancer Configuration:"
+echo "  Domain: elros.k02.com"
+echo "  Upstream:"
+echo "    - elendil.k02.com:8001"
+echo "    - isildur.k02.com:8002"
+echo "    - anarion.k02.com:8003"
+echo "  Algorithm: Round Robin"
+echo ""
+echo "Testing Load Balancer:"
+echo "  curl http://elros.k02.com/api/airing"
+echo ""
+echo "Melihat distribusi:"
+echo "  tail -30 /var/log/nginx/elros-access.log | grep -oE '(elendil|isildur|anarion)' | sort | uniq -c"
+echo ""
+echo "=========================================="
 ```
 
 #### Elendil
